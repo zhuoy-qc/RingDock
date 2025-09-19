@@ -2,48 +2,40 @@
 This repository provides tools for our RingDock pipepline, focusing on pi-cation interactions (cations from protein).
 
 ⚙️ Environment Setup
-We recommend using Conda to set up a reproducible environment.
+We recommend using Conda to set up the environment.
 
-Step 1: Create the Environment
-bash
 conda env create -f ringdock_pi-cation_env.yml
-💡 Before sharing the YAML file, remove the prefix: line to avoid machine-specific paths.
 
-Step 2: Activate the Environment
-bash
 conda activate ringdock_pi-cation_env
+
 📁 Dataset-Based Usage (e.g., PoseBuster)
 To run the full pipeline on a dataset like PoseBuster:
 
 Download the dataset of interest.
 
-Place all PDB_ID directories in a single working directory.
+Go to the single working directory containing all PDB ID dirs.
 
 Run the following scripts in that directory:
 
-python pi-cation-analysis.py
+python pi-cation-analysis.py, which finds all pi-cation interactions 
 python 1_sampling.py
 python 2_model.py
-The toolkit will compute:
 
-π-cation interaction recovery rates
 
-Error metrics for structural predictions
+
 
 🧪 Single PDB Usage
 You can also analyze individual PDB files using the utilities provided:
 
 Navigate to the utils/ directory.
 
-Use the scripts there to run the pipeline on a single structure.
 
-This mode is ideal for quick testing or focused analysis on specific proteins.
 
 📊 Output & Evaluation
-The analysis outputs include:
+The analysis codes include:
 
-Recovery statistics for π-cation interactions
+Compute Recovery rate for π-cation interactions
 
 Structural error metrics
 
-Logs and intermediate data for further inspection
+
