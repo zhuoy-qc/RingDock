@@ -1,5 +1,5 @@
-🧬 RingDock Pi-Cation Interaction Analysis Toolkit
-This repository provides tools for analyzing π-cation interactions in protein structures, with support for both large datasets (e.g., PoseBuster) and individual PDB files. The pipeline includes sampling, modeling, and evaluation of interaction recovery rates.
+🧬 RingDock 
+This repository provides tools for our RingDock pipepline, focusing on pi-cation interactions (cations from protein).
 
 ⚙️ Environment Setup
 We recommend using Conda to set up a reproducible environment.
