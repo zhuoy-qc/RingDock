@@ -14,11 +14,13 @@ Download the ring_sdf_files dir and set the path in the codes to match this dir 
 📁 Dataset-Based Usage (e.g., PoseBuster)
 To run the full pipeline on a dataset like PoseBuster:
 
-Download the dataset of interest.Go to the directory containing all PDB ID dirs.
+Download the dataset of interest.cd to the directory containing all PDB ID dirs.RUN move.py to move the dir containing PI-CATION interaction to "with_pication" dir. 
+cd to "with_pication" dir
+
 
 Run the following scripts in that directory:
 
-python pi-cation-analysis.py, which finds all pi-cation interactions 
+python pi-cation-analysis.py, which finds all pi-cation interactions and list the distance,offset,Rz of these interactions.
 python 1_sampling.py
 python 2_model.py
 
