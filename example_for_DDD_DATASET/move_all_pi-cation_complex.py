@@ -10,7 +10,7 @@ def move_directories_with_pication_posebuster():
 
     # Read the input file
     try:
-        with open("PBD_lists_withpi-cation-interactions.txt", "r") as file:
+        with open("PDB_lists_withpi-cation-interactions.txt", "r") as file:
             lines = file.readlines()
     except FileNotFoundError:
         print("Error: 'directories_with_interactions.txt' not found in current directory")
