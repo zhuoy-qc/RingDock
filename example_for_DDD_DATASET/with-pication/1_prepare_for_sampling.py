@@ -1,4 +1,4 @@
-# prepare_docking_tasks.py
+# Needs further check
 
 import os
 import glob
@@ -10,8 +10,15 @@ from tqdm import tqdm
 import time
 import pickle
 
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Set up logging to both file and console
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("docking_prepare.log"),
+        logging.StreamHandler()
+    ]
+)
 logger = logging.getLogger(__name__)
 
 def protonate_single_file(args):
@@ -19,28 +26,29 @@ def protonate_single_file(args):
     Protonate a single PDB file using obabel with optimized performance.
     """
     pdb_file, subdir_path = args
-    
+
     if "only" in os.path.basename(pdb_file).lower():
-        logger.info(f"Skipping file containing 'only': {pdb_file}")
+        # Suppressed: logger.info(f"Skipping file containing 'only': {pdb_file}")
         return None
 
     try:
         base_name = os.path.basename(pdb_file).replace('.pdb', '')
         protonated_file = os.path.join(subdir_path, f"{base_name}_protonated.pdb")
-        
+
         cmd = [
-            'obabel', 
-            pdb_file, 
-            '-O', protonated_file, 
-            '-h',           
-            '--pdb'         
+            'obabel',
+            pdb_file,
+            '-O', protonated_file,
+            '-h',
+            '--pdb'
         ]
 
         logger.debug(f"Protonating {pdb_file}")
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
         if result.returncode == 0 and os.path.exists(protonated_file) and os.path.getsize(protonated_file) > 0:
-            logger.info(f"Successfully protonated: {protonated_file}")
+            # Suppressed: logger.info(f"Successfully protonated: {protonated_file}")
+            logger.debug(f"Successfully protonated: {protonated_file}")
             return protonated_file
         else:
             error_msg = result.stderr if result.returncode != 0 else "Output file not created or empty"
@@ -59,8 +67,8 @@ def find_and_protonate_pdb_files(base_dir):
     Find and protonate PDB files with maximum parallelization.
     """
     pdb_files_to_process = []
-    
-    subdirs = [d for d in os.listdir(base_dir) 
+
+    subdirs = [d for d in os.listdir(base_dir)
                if os.path.isdir(os.path.join(base_dir, d))]
 
     for subdir in subdirs:
@@ -99,7 +107,7 @@ def classify_aromatic_rings(sdf_file, reference_ring_dir="ring_sdf_files"):
     try:
         from rdkit import Chem
         from rdkit.Chem import AllChem
-        
+
         suppl = Chem.SDMolSupplier(sdf_file)
         molecule = next(suppl, None)
         if molecule is None:
@@ -223,7 +231,6 @@ def classify_aromatic_rings(sdf_file, reference_ring_dir="ring_sdf_files"):
                             break
                 if matched_ref and matched_path:
                     ring_matches.append((ring_type, atom_indices, matched_ref, matched_path))
-
         return aromatic_rings_info, bicyclic_fused_info, ring_matches
 
     except Exception as e:
@@ -251,19 +258,19 @@ def collect_all_docking_tasks(protonated_files, reference_ring_dir):
     Collect ALL docking tasks from ALL proteins upfront to ensure maximum parallelization.
     """
     all_docking_tasks = []
-    
+
     logger.info("Collecting all docking tasks from all proteins...")
-    
+
     for protonated_file in tqdm(protonated_files, desc="Scanning proteins"):
         protein_dir = os.path.dirname(protonated_file)
         ligand_files = find_ligand_sdf_files(protein_dir)
-        
+
         if not ligand_files:
             logger.warning(f"No ligand files found in {protein_dir}")
             continue
 
         autobox_ligand = ligand_files[0]
-        
+
         # Collect ring matches for all ligands in this protein
         all_ring_matches = []
         for ligand_file in ligand_files:
@@ -290,7 +297,7 @@ def collect_all_docking_tasks(protonated_files, reference_ring_dir):
                 protein_dir,
                 30  # Lower exhaustiveness for faster processing
             ))
-    
+
     logger.info(f"Collected {len(all_docking_tasks)} total docking tasks from {len(protonated_files)} proteins")
     return all_docking_tasks
 
@@ -303,16 +310,19 @@ def main_preparation():
     base_dir = os.getcwd()
     reference_ring_dir = None
 
-    # Dynamically locate RingDock-main/ring_sdf_files
-    for root, dirs, files in os.walk(base_dir):
-        if 'RingDock-main' in dirs:
-            candidate = os.path.join(root, 'RingDock-main', 'ring_sdf_files')
-            if os.path.exists(candidate):
-                reference_ring_dir = candidate
-                break
+    # Walk up the directory tree to find RingDock-main
+    current_path = os.path.abspath(base_dir)
+    while current_path != os.path.dirname(current_path):  # Stop at filesystem root
+        candidate = os.path.join(current_path, 'RingDock-main', 'ring_sdf_files')
+        if os.path.exists(candidate):
+            reference_ring_dir = candidate
+            break
+        current_path = os.path.dirname(current_path)
 
     if not reference_ring_dir:
-        logger.warning("Reference ring directory not found. Ring matching disabled.")
+        logger.warning("Reference ring directory 'RingDock-main/ring_sdf_files' not found. Ring matching disabled.")
+    else:
+        logger.info(f"Found reference ring directory: {reference_ring_dir}")
 
     if not setup_environment():
         logger.error("Environment setup failed. Please install required tools.")
