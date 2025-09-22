@@ -3,14 +3,14 @@ import shutil
 
 def move_directories_with_pication_posebuster():
     # Create the target directory if it doesn't exist
-    target_dir = "with_pication_posebuster"
+    target_dir = "with_pication"
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
         print(f"Created directory: {target_dir}")
 
     # Read the input file
     try:
-        with open("directories_with_interactions.txt", "r") as file:
+        with open("PBD_lists_with_pi-cation-interactions.txt", "r") as file:
             lines = file.readlines()
     except FileNotFoundError:
         print("Error: 'directories_with_interactions.txt' not found in current directory")
