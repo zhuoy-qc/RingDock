@@ -1,12 +1,15 @@
 🧬 RingDock 
-This repository provides tools for our RingDock pipepline, focusing on pi-cation interactions (cations from protein).
+This repository provides tools for our RingDock pipepline, focusing on pi-cation interactions (cations from protein interacts with ligand aromatic rings).
 
-⚙️ Environment Setup
+⚙️ Environment Setup 
 We recommend using Conda to set up the environment.
 
 conda env create -f ringdock_pi-cation_env.yml
 
 conda activate ringdock_pi-cation_env
+
+📁 Preparation 
+Download the ring_sdf_files dir and set the path in the codes to match this dir path
 
 📁 Dataset-Based Usage (e.g., PoseBuster)
 To run the full pipeline on a dataset like PoseBuster:
