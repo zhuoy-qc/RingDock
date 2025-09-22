@@ -3,7 +3,7 @@ import shutil
 
 def move_directories_with_pication_posebuster():
     # Create the target directory if it doesn't exist
-    target_dir = "with_pication"
+    target_dir = "with-pication"
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
         print(f"Created directory: {target_dir}")
