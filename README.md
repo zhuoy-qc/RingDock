@@ -14,9 +14,7 @@ Download the ring_sdf_files dir and set the path in the codes to match this dir 
 📁 Dataset-Based Usage (e.g., PoseBuster)
 To run the full pipeline on a dataset like PoseBuster:
 
-Download the dataset of interest.
-
-Go to the single working directory containing all PDB ID dirs.
+Download the dataset of interest.Go to the directory containing all PDB ID dirs.
 
 Run the following scripts in that directory:
 
