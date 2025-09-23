@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#user needes to input ring.sdf for ligand 
 import os
 import sys
 import logging
