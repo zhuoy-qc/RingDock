@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """
-Enhanced Parallel PLIP Analysis Pipeline with CSV Reporting
 Creates complex.pdb files and analyzes π-cation interactions across multiple directories
 Outputs detailed CSV report with geometric parameters and atom indices
 """
@@ -15,13 +14,7 @@ from multiprocessing import Pool, cpu_count
 import time
 from rdkit import Chem
 from plip.structure.preparation import PDBComplex
-'''
-def calculate_angle(v1, v2):
-    """Calculate angle between two vectors in degrees"""
-    v1_u = v1 / np.linalg.norm(v1)
-    v2_u = v2 / np.linalg.norm(v2)
-    return np.degrees(np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)))
-'''
+
 def calculate_angle(v1, v2):
     """Calculate angle between two vectors in degrees.
     If angle > 90, return 180 - angle to reflect acute orientation."""
