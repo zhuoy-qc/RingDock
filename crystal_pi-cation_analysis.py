@@ -49,7 +49,7 @@ def create_complex_pdb(subdir_path):
         ligand_file = ligand_files[0]
         
         # Find protein PDB file
-        protein_files = list(subdir.glob('*_protein.pdb'))
+        protein_files = list(subdir.glob('*_only_protein.pdb'))
         if not protein_files:
             return False, f"No *_only_protein.pdb file found", subdir_name
         protein_file = protein_files[0]
