@@ -104,8 +104,8 @@ def calculate_absolute_errors(df_pred, df_report, rank_threshold=5):
     return error_df
 
 def main():
-    predictions_file = "predictions_with_energy_ranked_new.csv"
-    report_file = "/data1/zyin/posebuster_dataset/posebusters_benchmark_set/pication_interactions_report.csv"
+    predictions_file = "predictions_with_energy_ranked.csv"
+    report_file = "pication_interactions_report.csv"
     rank_threshold = 5  # Only include predictions ranked 1 to 5
 
     try:
