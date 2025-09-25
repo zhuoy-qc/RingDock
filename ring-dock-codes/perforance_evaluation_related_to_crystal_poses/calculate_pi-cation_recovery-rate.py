@@ -87,7 +87,7 @@ def save_matching_report(results, output_file="protein_matching_report.csv"):
     print(f"Detailed matching report saved to: {output_file.replace('.csv', '.xlsx')}")
 
 def main():
-    report_file = "/scratch_sh/zyin/posebuster_dataset/posebusters_benchmark_set/cleaned_interactions.csv"
+    report_file = "all_pication_interactions.csv"  #make sure paths are corrected set
     predictions_file = "predictions_with_energy_ranked_new.csv"
     
     try:
