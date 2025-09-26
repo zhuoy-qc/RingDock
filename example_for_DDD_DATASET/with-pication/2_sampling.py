@@ -1,5 +1,3 @@
-# run_smina_docking.py
-
 import os
 import subprocess
 import logging
@@ -18,6 +16,7 @@ logger = logging.getLogger(__name__)
 CONCURRENT_PROTEINS = 12      # Number of proteins to process simultaneously
 CPU_CORES_PER_SMINA = 8       # Number of CPU cores each Smina job will use
 TIMEOUT_SECONDS = 120         # Timeout in seconds (2 minutes)
+EXHAUSTIVENESS = 100          # Exhaustiveness parameter for Smina
 # ===============================
 
 # Global variable for timeout log file
@@ -42,7 +41,7 @@ def run_smina_docking_serial(args):
     """
     protein_file, ligand_file, autobox_ligand, output_dir, exhaustiveness = args
     start_time = time.time()
-    
+
     try:
         protein_name = os.path.basename(protein_file).replace('_protonated.pdb', '')
         ligand_name = os.path.basename(ligand_file).replace('.sdf', '')
@@ -50,12 +49,12 @@ def run_smina_docking_serial(args):
 
         # Use configurable number of CPU cores per Smina job
         num_cpu_per_sampling = CPU_CORES_PER_SMINA
-        
+
         cmd = [
             'smina', '-r', protein_file, '-l', ligand_file,
             '--autobox_ligand', autobox_ligand, '-o', output_file,
-            '--exhaustiveness', str(exhaustiveness), '--seed', '15',
-            '--num_modes', '100', '--energy_range', '5', '--scoring', 'vina',
+            '--exhaustiveness', str(exhaustiveness), '--seed', '1',
+            '--num_modes', '100', '--energy_range', '5', '--scoring', 'vinardo',
             '--cpu', str(num_cpu_per_sampling)  # Specify number of CPU cores
         ]
 
@@ -114,19 +113,28 @@ def main_sampling():
     """
     logger.info("Starting Smina sampling workflow...")
     logger.info(f"Configuration: {CONCURRENT_PROTEINS} concurrent proteins, {CPU_CORES_PER_SMINA} CPU cores per Smina job")
+    logger.info(f"Exhaustiveness setting: {EXHAUSTIVENESS}")
     logger.info(f"Timeout setting: {TIMEOUT_SECONDS} seconds ({TIMEOUT_SECONDS/60:.1f} minutes)")
     logger.info(f"Timeout log file: {TIMEOUT_LOG_FILE}")
-    
+
     # Load sampling tasks
     tasks_file = "docking_tasks.pkl"
     if not os.path.exists(tasks_file):
         logger.error(f"Sampling tasks file not found: {tasks_file}")
         logger.error("Please run prepare_docking_tasks.py first!")
         return
-    
+
     with open(tasks_file, 'rb') as f:
         all_sampling_tasks = pickle.load(f)
+
+    # Update exhaustiveness in all tasks
+    updated_tasks = []
+    for task in all_sampling_tasks:
+        protein_file, ligand_file, autobox_ligand, output_dir, _ = task
+        updated_tasks.append((protein_file, ligand_file, autobox_ligand, output_dir, EXHAUSTIVENESS))
     
+    all_sampling_tasks = updated_tasks
+
     logger.info(f"Loaded {len(all_sampling_tasks)} sampling tasks from {tasks_file}")
 
     total_cores = cpu_count()
@@ -137,24 +145,23 @@ def main_sampling():
     resources = get_system_resources()
     logger.info(f"System resources - CPU: {resources['cpu_percent']}%, "
                 f"Memory: {resources['memory_percent']}% ({resources['memory_available_gb']:.1f}GB available)")
-
+    
     if not setup_environment():
         logger.error("Environment setup failed. Please install required tools.")
         return
 
     # Calculate optimal number of concurrent processes
     num_concurrent_sampling = min(len(all_sampling_tasks), max_possible_concurrent, 64)  # Cap at 64 to prevent overload
-    
+
     logger.info(f"Running {len(all_sampling_tasks)} sampling tasks with {num_concurrent_sampling} concurrent processes")
     logger.info(f"Each Smina job will use {CPU_CORES_PER_SMINA} CPU cores")
     logger.info(f"Expected maximum CPU utilization: {num_concurrent_sampling * CPU_CORES_PER_SMINA} cores")
-    logger.info(f"Timeout for individual jobs: {TIMEOUT_SECONDS} seconds")
-    
+    logger.info(f"Timeout for individual jobs: {TIMEOUT_SECONDS} seconds")        
     # Initialize timeout log file
     with open(TIMEOUT_LOG_FILE, 'w') as f:
         f.write(f"Smina Timeout Log - Started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("=" * 80 + "\n")
-    
+
     # Run ALL sampling tasks in parallel
     with Pool(processes=num_concurrent_sampling, maxtasksperchild=2) as pool:
         results = list(tqdm(
@@ -166,10 +173,10 @@ def main_sampling():
 
     successful_results = [r for r in results if r is not None]
     failed_results = len(all_sampling_tasks) - len(successful_results)
-    
+
     logger.info(f"Completed {len(successful_results)} out of {len(all_sampling_tasks)} sampling tasks successfully")
     logger.info(f"Failed/skipped tasks: {failed_results}")
-    
+
     # Report timeout statistics
     if os.path.exists(TIMEOUT_LOG_FILE):
         timeout_count = 0
@@ -181,12 +188,15 @@ def main_sampling():
                 logger.info(f"See {TIMEOUT_LOG_FILE} for details")
         except Exception as e:
             logger.error(f"Could not read timeout log: {e}")
-    
+
     final_resources = get_system_resources()
     logger.info(f"Final system resources - CPU: {final_resources['cpu_percent']}%, "
                 f"Memory: {final_resources['memory_percent']}%")
-    
+
     logger.info("Smina sampling workflow completed!")
+
+if __name__ == "__main__":
+    main_sampling()
 
 if __name__ == "__main__":
     main_sampling()
