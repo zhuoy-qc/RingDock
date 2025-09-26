@@ -54,7 +54,7 @@ def run_smina_docking_serial(args):
             'smina', '-r', protein_file, '-l', ligand_file,
             '--autobox_ligand', autobox_ligand, '-o', output_file,
             '--exhaustiveness', str(exhaustiveness), '--seed', '1',
-            '--num_modes', '100', '--energy_range', '5', '--scoring', 'vinardo',
+            '--num_modes', '150', '--energy_range', '20', '--scoring', 'vinardo',
             '--cpu', str(num_cpu_per_sampling)  # Specify number of CPU cores
         ]
 
