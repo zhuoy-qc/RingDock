@@ -198,5 +198,3 @@ def main_sampling():
 if __name__ == "__main__":
     main_sampling()
 
-if __name__ == "__main__":
-    main_sampling()
