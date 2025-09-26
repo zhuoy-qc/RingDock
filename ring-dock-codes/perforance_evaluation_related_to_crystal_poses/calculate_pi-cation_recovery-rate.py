@@ -48,43 +48,46 @@ def check_protein_matching(report_file, predictions_file):
 
     return results
 
-def save_matching_report(results, output_file="pi_cation_matching_report.csv"):
+def save_matching_report_txt(results, output_file="pi_cation_matching_report.txt"):
     """
-    Save the matching results to a CSV file
+    Save the matching results to a TXT file
     """
-    # Create DataFrame for the summary
-    summary_data = {
-        'Metric': [
-            'Total PI-CATION interactions in experimental crystal structures',
-            'Recovered in docked ring poses',
-            'Recovery rate (%)'
-        ],
-        'Value': [
-            results['total_pi_cation_interactions'],
-            results['recovered_interactions'],
-            f"{results['recovery_rate']:.2f}%"
-        ]
-    }
-
-    summary_df = pd.DataFrame(summary_data)
-
-    # Create DataFrame for detailed missed interactions
-    missed_df = pd.DataFrame({
-        'Missed_Interactions': results['missed_interactions']
-    })
-
-    # Create DataFrame for detailed matched interactions
-    matched_df = pd.DataFrame({
-        'Matched_Interactions': results['matched_interactions_list']
-    })
-
-    # Save summary to CSV
-    summary_df.to_csv(output_file, index=False)
+    with open(output_file, 'w') as f:
+        f.write("PI-CATION INTERACTION RECOVERY ANALYSIS REPORT\n")
+        f.write("=" * 60 + "\n\n")
+        
+        f.write("SUMMARY STATISTICS:\n")
+        f.write("-" * 30 + "\n")
+        f.write(f"Total PI-CATION interactions in experimental crystal structures: {results['total_pi_cation_interactions']}\n")
+        f.write(f"Recovered in docked ring poses: {results['recovered_interactions']}\n")
+        f.write(f"Recovery rate: {results['recovery_rate']:.2f}%\n\n")
+        
+        f.write("DETAILED RESULTS:\n")
+        f.write("-" * 30 + "\n")
+        f.write(f"Number of missed interactions: {len(results['missed_interactions'])}\n")
+        f.write(f"Number of matched interactions: {len(results['matched_interactions_list'])}\n\n")
+        
+        f.write("MISSED INTERACTIONS:\n")
+        f.write("-" * 30 + "\n")
+        if results['missed_interactions']:
+            for i, interaction in enumerate(results['missed_interactions'], 1):
+                f.write(f"{i:4d}. {interaction}\n")
+        else:
+            f.write("No missed interactions - all interactions were recovered!\n")
+        
+        f.write("\n" + "=" * 60 + "\n")
+        f.write("MATCHED INTERACTIONS:\n")
+        f.write("-" * 30 + "\n")
+        if results['matched_interactions_list']:
+            for i, interaction in enumerate(results['matched_interactions_list'], 1):
+                f.write(f"{i:4d}. {interaction}\n")
+        else:
+            f.write("No matched interactions found.\n")
     
-    print(f"Summary report saved to: {output_file}")
+    print(f"Results saved to: {output_file}")
 
 def main():
-    report_file = "/data1/zyin/posebuster_dataset/newest_pb/posebusters_benchmark_set/pication_interactions_report.csv"
+    report_file = "reference_experimental_pication_interactions_report.csv"
     predictions_file = "predictions_with_energy_ranked.csv"
 
     try:
@@ -103,13 +106,16 @@ def main():
             for interaction in results['missed_interactions'][:10]:
                 print(f"  - {interaction}")
 
-        # Save detailed report
-        save_matching_report(results)
+        # Save detailed report in TXT format
+        save_matching_report_txt(results)
 
     except FileNotFoundError as e:
         print(f"Error: File not found - {e}")
     except Exception as e:
         print(f"Error during processing: {e}")
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     main()
