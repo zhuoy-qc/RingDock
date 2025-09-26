@@ -105,7 +105,7 @@ def calculate_absolute_errors(df_pred, df_report, rank_threshold=5):
 
 def main():
     predictions_file = "predictions_with_energy_ranked.csv"
-    report_file = "pication_interactions_report.csv"
+    report_file = "reference_experimental_pication_interactions_report.csv"
     rank_threshold = 5  # Only include predictions ranked 1 to 5
 
     try:
