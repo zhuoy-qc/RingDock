@@ -25,15 +25,11 @@ def load_and_preprocess_data(predictions_file, report_file):
 
     return df_pred, df_report
 
-def extract_protein_residue(protein_str):
+def extract_protein_residue_with_chain(protein_str):
     """
-    Extract residue information from protein string
-    Example: "ARG-274-C" -> "ARG-274"
+    Extract residue information from protein string including chain
+    Example: "ARG-274-C" -> "ARG-274-C"
     """
-    if isinstance(protein_str, str) and '-' in protein_str:
-        parts = protein_str.split('-')
-        if len(parts) >= 2:
-            return f"{parts[0]}-{parts[1]}"
     return protein_str
 
 def extract_pdb_id(directory_str):
@@ -52,9 +48,9 @@ def calculate_absolute_errors(df_pred, df_report, rank_threshold=5):
     """
     Calculate absolute errors between two DataFrames, filtering by prediction rank
     """
-    # Create standardized residue identifiers for merging
-    df_pred['Protein_Residue'] = df_pred['Protein'].apply(extract_protein_residue)
-    df_report['Protein_Residue'] = df_report['Protein'].apply(extract_protein_residue)
+    # Create standardized residue identifiers for merging (including chain)
+    df_pred['Protein_Residue_Chain'] = df_pred['Protein'].apply(extract_protein_residue_with_chain)
+    df_report['Protein_Residue_Chain'] = df_report['Protein'].apply(extract_protein_residue_with_chain)
     df_pred['PDB_ID'] = df_pred['Directory'].apply(extract_pdb_id)
 
     # Filter by interaction type if the column exists
@@ -65,17 +61,17 @@ def calculate_absolute_errors(df_pred, df_report, rank_threshold=5):
     # Filter by rank threshold
     df_pred = df_pred[df_pred['Energy_Rank'] <= rank_threshold]
 
-    # Merge on Protein_Residue
+    # Merge on Protein_Residue_Chain (including chain information)
     merged_df = pd.merge(
         df_pred,
         df_report,
-        on=['Protein_Residue'],
+        on=['Protein_Residue_Chain'],  # Changed from 'Protein_Residue' to 'Protein_Residue_Chain'
         suffixes=('_pred', '_report'),
         how='inner'
     )
 
     if merged_df.empty:
-        print("Warning: No matching protein residues found")
+        print("Warning: No matching protein residues found after including chain information")
         return pd.DataFrame()
 
     # Calculate absolute errors
@@ -87,7 +83,7 @@ def calculate_absolute_errors(df_pred, df_report, rank_threshold=5):
 
         results.append({
             'PDB_ID': row['PDB_ID'],
-            'Protein_Residue': row['Protein_Residue'],
+            'Protein_Cation': row['Protein_Residue_Chain'],  # Renamed for display
             'Distance_Error': distance_error,
             'Offset_Error': offset_error,
             'RZ_Error': rz_error,
@@ -138,14 +134,14 @@ def main():
             # Display top 20 largest Distance_Errors
             print("\nTop 20 Largest Distance_Errors:")
             # Sort by Distance_Error in descending order and select top 20
-            top20_distance_errors = error_df.nlargest(20, 'Distance_Error')[['PDB_ID', 'Protein_Residue', 'Distance_Error']]
+            top20_distance_errors = error_df.nlargest(20, 'Distance_Error')[['PDB_ID', 'Protein_Cation', 'Distance_Error']]
             # Ensure Distance_Error is displayed with 2 decimal places[6](@ref)
             print(top20_distance_errors.to_string(index=False, float_format='%.2f'))
             
             # Save complete results to CSV (including all columns)
             output_columns = [
                 'PDB_ID',
-                'Protein_Residue',
+                'Protein_Cation',  # Renamed for display
                 'Distance_Error',
                 'Offset_Error',
                 'RZ_Error',
@@ -157,9 +153,9 @@ def main():
             error_cols = ['Distance_Error', 'Offset_Error', 'RZ_Error']
             error_df_to_save[error_cols] = error_df_to_save[error_cols].round(2)
             error_df_to_save.to_csv("absolute_errors_report_new.csv", index=False)
-            print("\nComplete results saved to: absolute_errors_report.csv")
+            print("\nComplete results saved to: absolute_errors_report_new.csv")
         else:
-            print("No matching data found for calculation")
+            print("No matching data found for calculation after including chain information")
 
     except FileNotFoundError as e:
         print(f"File not found: {e}")
