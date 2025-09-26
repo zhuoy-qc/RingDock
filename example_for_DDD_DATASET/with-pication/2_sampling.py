@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 CONCURRENT_PROTEINS = 12      # Number of proteins to process simultaneously
 CPU_CORES_PER_SMINA = 8       # Number of CPU cores each Smina job will use
 TIMEOUT_SECONDS = 120         # Timeout in seconds (2 minutes)
-EXHAUSTIVENESS = 100          # Exhaustiveness parameter for Smina
+EXHAUSTIVENESS = 100          # Exhaustiveness parameter for Smina, larger means more time to sample
 # ===============================
 
 # Global variable for timeout log file
