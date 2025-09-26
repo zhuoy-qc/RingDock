@@ -84,7 +84,7 @@ def save_matching_report(results, output_file="pi_cation_matching_report.csv"):
     print(f"Summary report saved to: {output_file}")
 
 def main():
-    report_file = "/data1/zyin/posebuster_dataset/newest_pb/posebusters_benchmark_set/pication_interactions_report.csv"
+    report_file = "reference_experimental_pication_interactions_report.csv"
     predictions_file = "predictions_with_energy_ranked.csv"
 
     try:
