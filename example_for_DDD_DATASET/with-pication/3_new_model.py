@@ -345,8 +345,29 @@ def process_all_complex_dirs(complex_dirs):
         logger.info("\n  No π-cation interactions found across all complexes.")
         return None
 
-def run_model_prediction(input_csv_path):
-    model_path = '/home/zyin/final_model_20250919_025353.pkl' #needs to set correctly
+def find_model_file(base_dir):
+    """Find the model file by searching upward from base directory"""
+    model_dir = None
+    current_path = os.path.abspath(base_dir)
+    while current_path != os.path.dirname(current_path):
+        # Look for files that start with 'final_model' and end with '.pkl'
+        model_candidates = glob.glob(os.path.join(current_path, 'final_model_*.pkl'))
+        if model_candidates:
+            # Return the most recent one if multiple exist
+            model_dir = sorted(model_candidates, reverse=True)[0]
+            break
+        current_path = os.path.dirname(current_path)
+    
+    return model_dir
+
+def run_model_prediction(input_csv_path, base_dir):
+    # Find the model file automatically
+    model_path = find_model_file(base_dir)
+    if model_path is None:
+        logger.error("❌ Could not find model file (final_model_*.pkl) in directory tree")
+        return
+    
+    logger.info(f"✅ Found model file: {model_path}")
     output_csv_path = 'predictions_with_energy_ranked.csv'
 
     try:
@@ -409,7 +430,7 @@ def run_model_prediction(input_csv_path):
         return
 
     # Add prediction results back to original DataFrame
-    df_pred = df.loc[X_input_clean.index].copy()
+    df_pred = df.loc[X_input_clean.index].copy()  # Fixed: Use square brackets instead of parentheses
     df_pred['Predicted_Energy'] = predicted_energies
 
     # Rank by PDB ID group (rank within each PDB file)
@@ -491,6 +512,46 @@ def display_final_results(csv_file_path):
     except Exception as e:
         logger.error(f"❌ Error displaying final results: {e}")
 
+def cleanup_generated_files_recursive(base_dir):
+    """Remove generated files in specified formats from base directory, parent directory, and all subdirectories"""
+    patterns_to_remove = [
+        'plipfixed.*.pdb',
+        '*_complex_*_protonated.pdb'
+    ]
+    
+    files_removed = 0
+    
+    # Clean up in base directory and all subdirectories
+    for pattern in patterns_to_remove:
+        # Search in base directory and all subdirectories
+        pattern_path = os.path.join(base_dir, '**', pattern)
+        files = glob.glob(pattern_path, recursive=True)
+        for file_path in files:
+            try:
+                os.remove(file_path)
+                logger.info(f"🗑️  Removed generated file: {file_path}")
+                files_removed += 1
+            except Exception as e:
+                logger.warning(f"⚠️  Could not remove file {file_path}: {e}")
+    
+    # Also clean up in parent directory
+    parent_dir = os.path.dirname(base_dir)
+    for pattern in patterns_to_remove:
+        pattern_path = os.path.join(parent_dir, pattern)
+        files = glob.glob(pattern_path)
+        for file_path in files:
+            try:
+                os.remove(file_path)
+                logger.info(f"🗑️  Removed generated file from parent directory: {file_path}")
+                files_removed += 1
+            except Exception as e:
+                logger.warning(f"⚠️  Could not remove file from parent directory {file_path}: {e}")
+    
+    if files_removed > 0:
+        logger.info(f"✅ Cleaned up {files_removed} generated files from directory tree and parent directory")
+    else:
+        logger.info("✅ No generated files to clean up")
+
 # --- Main execution flow ---
 if __name__ == "__main__":
     set_start_method('fork', force=True)
@@ -539,7 +600,7 @@ if __name__ == "__main__":
     if temp_csv_file:
         print("\n3️⃣  STEP 3: MODEL PREDICTION AND RANK")
         print("-" * 50)
-        final_results_file = run_model_prediction(temp_csv_file)
+        final_results_file = run_model_prediction(temp_csv_file, base_directory)
         
         # Clean up temporary file after use
         try:
@@ -547,6 +608,11 @@ if __name__ == "__main__":
             logger.info(f"🗑️  Temporary file {temp_csv_file} deleted")
         except Exception as e:
             logger.warning(f"⚠️  Could not delete temporary file {temp_csv_file}: {e}")
+
+    # Clean up generated files in the root directory, parent directory, and all subdirectories
+    print("\n4️⃣  STEP 4: CLEANUP GENERATED FILES")
+    print("-" * 50)
+    cleanup_generated_files_recursive(base_directory)
 
     print("\n" + "=" * 60)
     print("🎯 ALL STEPS COMPLETED SUCCESSFULLY!")
