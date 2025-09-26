@@ -1,4 +1,4 @@
-# Needs further check
+# Protanate protein using obabel, not suggested, should use newer verision 
 
 import os
 import glob
