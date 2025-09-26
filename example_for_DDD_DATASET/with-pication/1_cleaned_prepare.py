@@ -311,7 +311,7 @@ def main_preparation():
 
     current_path = os.path.abspath(base_dir)
     while current_path != os.path.dirname(current_path):
-        candidate = os.path.join(current_path, 'RingDock-main', 'ring_sdf_files')
+        candidate = os.path.join(current_path,  'ring_sdf_files')
         if os.path.exists(candidate):
             reference_ring_dir = candidate
             break
