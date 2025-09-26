@@ -55,7 +55,7 @@ def run_smina_docking_serial(args):
             '--autobox_ligand', autobox_ligand, '-o', output_file,
             '--exhaustiveness', str(exhaustiveness), '--seed', '1',
             '--num_modes', '150', '--energy_range', '20', '--scoring', 'vinardo',
-            '--cpu', str(num_cpu_per_sampling)  # Specify number of CPU cores
+            '--cpu', str(num_cpu_per_sampling)  
         ]
 
         logger.info(f"Running Smina sampling with {num_cpu_per_sampling} cores: {' '.join(cmd)}")
