@@ -65,6 +65,46 @@ def protonate_single_file_with_pdb2pqr(args):
         return ("fail", pdb_file)
 
 
+def protonate_single_file_with_obabel(args):
+    """
+    Protonate a single PDB file using obabel as fallback.
+    """
+    pdb_file, subdir_path = args
+
+    if "only" in os.path.basename(pdb_file).lower():
+        return ("skip", pdb_file)
+
+    try:
+        base_name = os.path.basename(pdb_file).replace('.pdb', '')
+        protonated_file = os.path.join(subdir_path, f"{base_name}_protonated.pdb")
+
+        cmd = [
+            'obabel',
+            pdb_file,
+            '-O', protonated_file,
+            '-h',
+            '--pdb'
+        ]
+
+        logger.debug(f"Protonating {pdb_file} with OBabel")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+
+        if result.returncode == 0 and os.path.exists(protonated_file) and os.path.getsize(protonated_file) > 0:
+            logger.debug(f"Successfully protonated: {protonated_file}")
+            return ("success", protonated_file)
+        else:
+            error_msg = result.stderr if result.returncode != 0 else "Output file not created or empty"
+            logger.debug(f"OBabel failed for {pdb_file}: {error_msg}")
+            return ("fail", pdb_file)
+
+    except subprocess.TimeoutExpired:
+        logger.debug(f"Timeout for {pdb_file}")
+        return ("fail", pdb_file)
+    except Exception as e:
+        logger.debug(f"Error processing {pdb_file}: {e}")
+        return ("fail", pdb_file)
+
+
 def find_and_protonate_pdb_files(base_dir):
     pdb_files_to_process = []
     subdirs = [d for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))]
@@ -84,6 +124,8 @@ def find_and_protonate_pdb_files(base_dir):
     num_cores = max(1, int(cpu_count() * 0.75))
     logger.debug(f"Using {num_cores} cores for parallel protonation (75% of {cpu_count()} total)")
 
+    # First pass: Try with PDB2PQR
+    logger.debug("First pass: Protonating with PDB2PQR")
     with Pool(processes=num_cores, maxtasksperchild=5) as pool:
         results = list(tqdm(
             pool.imap(protonate_single_file_with_pdb2pqr, pdb_files_to_process, chunksize=1),
@@ -94,12 +136,52 @@ def find_and_protonate_pdb_files(base_dir):
 
     successful_files = []
     failed_files = []
+    skipped_files = []
 
     for status, path in results:
         if status == "success":
             successful_files.append(path)
         elif status == "fail":
             failed_files.append(path)
+        elif status == "skip":
+            skipped_files.append(path)
+
+    logger.debug(f"PDB2PQR results: {len(successful_files)} successful, {len(failed_files)} failed, {len(skipped_files)} skipped")
+
+    # Second pass: Try failed files with OBabel
+    if failed_files:
+        logger.debug(f"Second pass: Protonating {len(failed_files)} failed files with OBabel")
+        obabel_args = [(f, os.path.dirname(f)) for f in failed_files]
+        
+        with Pool(processes=min(len(obabel_args), num_cores), maxtasksperchild=5) as pool:
+            obabel_results = list(tqdm(
+                pool.imap(protonate_single_file_with_obabel, obabel_args, chunksize=1),
+                total=len(obabel_args),
+                desc="Protonating failed files with OBabel",
+                unit="file"
+            ))
+
+        # Process OBabel results
+        obabel_successful = []
+        obabel_failed = []
+        
+        for status, path in obabel_results:
+            if status == "success":
+                obabel_successful.append(path)
+            elif status == "fail":
+                obabel_failed.append(path)
+            elif status == "skip":
+                skipped_files.append(path)
+
+        # Update final results
+        successful_files.extend(obabel_successful)
+        failed_files = obabel_failed  # Only files that failed with both methods
+
+        # Log OBabel results
+        if obabel_successful:
+            logger.debug(f"OBabel recovered {len(obabel_successful)} files")
+        if obabel_failed:
+            logger.debug(f"OBabel also failed for {len(obabel_failed)} files")
 
     return successful_files, failed_files
 
@@ -246,6 +328,7 @@ def find_ligand_sdf_files(directory):
 
 
 def setup_environment():
+    # Check PDB2PQR
     try:
         result = subprocess.run(['pdb2pqr30', '--version'], capture_output=True, text=True, check=True)
         logger.debug(f"PDB2PQR available: {result.stdout.strip() or 'OK'}")
@@ -253,6 +336,15 @@ def setup_environment():
         logger.error("PDB2PQR is not installed or not in PATH. Install with: conda install -c conda-forge pdb2pqr")
         return False
 
+    # Check OBabel
+    try:
+        result = subprocess.run(['obabel', '-V'], capture_output=True, text=True, check=True)
+        logger.debug(f"OBabel available: {result.stderr.strip() or 'OK'}")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        logger.error("OBabel is not installed or not in PATH. Install with: conda install -c conda-forge openbabel")
+        return False
+
+    # Check RDKit
     try:
         from rdkit import Chem
         logger.debug("RDKit available for ring classification")
@@ -328,6 +420,7 @@ def main_preparation():
     if failed_files:
         failed_ids = sorted({os.path.basename(os.path.dirname(f)) for f in failed_files})
         print(f"⚠️  Protonation failed for {len(failed_ids)} complexes: {', '.join(failed_ids)}")
+        print(f"   These files failed with both PDB2PQR and OBabel")
     else:
         print("✅ All PDB files protonated successfully.")
 
@@ -356,4 +449,5 @@ if __name__ == "__main__":
     except RuntimeError:
         pass
 
+    main_preparation()
     main_preparation()
