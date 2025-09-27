@@ -1,5 +1,38 @@
-#!/usr/bin/env python3
+from Bio.PDB import PDBParser, PDBIO, Select
+from Bio.PDB.Polypeptide import is_aa
+import warnings
+
+class ProteinSelect(Select):
+    def accept_model(self, model):
+        """Accept all models"""
+        return True
+
+    def accept_chain(self, chain):
+        """Accept all chains"""
+        return True
+
+    def accept_residue(self, residue):
+        """Accept only standard amino acid residues"""
+        return is_aa(residue, standard=True)
+
+def clean_pdb(input_file, output_file='pure_protein.pdb'):
+    """
+    Read PDB file, remove all non-protein residues, and save pure protein structure.
+
+    Parameters:
+        input_file (str): Input PDB file path
+        output_file (str): Output pure protein PDB file path (default 'pure_protein.pdb')
+    """
+    parser = PDBParser(QUIET=True)  # Suppress warnings
+    structure = parser.get_structure('protein', input_file)
+
+    io = PDBIO()
+    io.set_structure(structure)
+    io.save(output_file, ProteinSelect())
+    print(f"Pure protein structure saved to {output_file}")
+
 """
+Enhanced Parallel PLIP Analysis Pipeline with CSV Reporting
 Creates complex.pdb files and analyzes π-cation interactions across multiple directories
 Outputs detailed CSV report with geometric parameters and atom indices
 """
@@ -30,13 +63,43 @@ def calculate_angle(v1, v2):
         angle = 180 - angle
 
     return angle
+
 def calculate_rz(distance, offset):
     """Calculate RZ value (projection of distance on Z-axis)"""
     return np.sqrt(distance**2 - offset**2)
 
+def clean_pdb_function(input_file, output_file='pure_protein.pdb'):
+    """
+    Read PDB file, remove all non-protein residues, and save pure protein structure.
+    """
+    from Bio.PDB import PDBParser, PDBIO, Select
+    from Bio.PDB.Polypeptide import is_aa
+    
+    class ProteinSelect(Select):
+        def accept_model(self, model):
+            """Accept all models"""
+            return True
+
+        def accept_chain(self, chain):
+            """Accept all chains"""
+            return True
+
+        def accept_residue(self, residue):
+            """Accept only standard amino acid residues"""
+            return is_aa(residue, standard=True)
+
+    parser = PDBParser(QUIET=True)  # Suppress warnings
+    structure = parser.get_structure('protein', input_file)
+
+    io = PDBIO()
+    io.set_structure(structure)
+    io.save(output_file, ProteinSelect())
+    return output_file
+
 def create_complex_pdb(subdir_path):
     """
     Create complex.pdb from *_ligand.sdf and *_only_protein.pdb in a directory
+    If *_only_protein.pdb is not found, purify *_protein.pdb
     """
     subdir = Path(subdir_path)
     subdir_name = subdir.name
@@ -48,11 +111,24 @@ def create_complex_pdb(subdir_path):
             return False, f"No *_ligand.sdf file found", subdir_name
         ligand_file = ligand_files[0]
         
-        # Find protein PDB file
+        # First try to find *_only_protein.pdb file
         protein_files = list(subdir.glob('*_only_protein.pdb'))
-        if not protein_files:
-            return False, f"No *_only_protein.pdb file found", subdir_name
-        protein_file = protein_files[0]
+        if protein_files:
+            protein_file = protein_files[0]
+        else:
+            # If not found, look for *_protein.pdb and purify it
+            protein_files = list(subdir.glob('*_protein.pdb'))
+            if not protein_files:
+                return False, f"No *_protein.pdb file found", subdir_name
+            protein_file = protein_files[0]
+            
+            # Purify the protein file
+            purified_file = subdir / f"{protein_file.stem}_only.pdb"
+            try:
+                clean_pdb_function(str(protein_file), str(purified_file))
+                protein_file = purified_file
+            except Exception as e:
+                return False, f"Error purifying protein: {str(e)}", subdir_name
         
         # Output file path
         output_file = subdir / 'complex.pdb'
@@ -71,7 +147,6 @@ def create_complex_pdb(subdir_path):
         
         if mol is None:
             return False, f"Could not read valid molecule from {ligand_file.name}", subdir_name
-        
         
         ligand_pdb_block = Chem.MolToPDBBlock(mol)
         
@@ -190,7 +265,7 @@ def process_single_directory(subdir_path):
     
     return results
 
-def generate_csv_report(all_results, output_file="pication_interactions_report.csv"):
+def generate_csv_report(all_results, output_file="reference_experimental_pication_interactions_report.csv"):
     """
     Generate a detailed CSV report with all π-cation interaction data
     """
@@ -291,21 +366,14 @@ def main():
     print(f"Total processing time: {elapsed_time:.2f} seconds")
     print(f"Average time per directory: {elapsed_time/total_dirs:.2f} seconds")
     
-    # Print individual directory status
+    # Print individual directory status (only those with interactions)
     print(f"\n{'='*60}")
-    print("DETAILED STATUS BY DIRECTORY")
+    print("DETAILED STATUS BY DIRECTORY (with interactions only)")
     print(f"{'='*60}")
     for result in results:
-        status = "✓" if result['analysis_success'] else "✗" if result['complex_created'] else "⚠"
-        print(f"{status} {result['directory']}: {len(result['interactions'])} interactions")
-    
-    # Print directories with interactions
-    if directories_with_interactions:
-        print(f"\n{'='*60}")
-        print("DIRECTORIES WITH π-CATION INTERACTIONS")
-        print(f"{'='*60}")
-        for directory in directories_with_interactions:
-            print(f"✓ {directory}")
+        if result['interactions']:  # Only print directories with interactions
+            status = "✓" if result['analysis_success'] else "✗" if result['complex_created'] else "⚠"
+            print(f"{status} {result['directory']}: {len(result['interactions'])} interactions")
 
 if __name__ == "__main__":
     # Check for required packages
