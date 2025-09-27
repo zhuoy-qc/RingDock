@@ -298,7 +298,7 @@ def generate_csv_report(all_results, output_file="reference_experimental_picatio
     df.to_csv(output_file, index=False, float_format='%.3f')
     return output_file
 
-def save_directories_with_interactions(all_results, output_file="directories_with_interactions.txt"):
+def save_directories_with_interactions(all_results, output_file="PDB_lists_withpi-cation-interactions.txt"):
     """
     Save list of directories that have at least one π-cation interaction
     """
