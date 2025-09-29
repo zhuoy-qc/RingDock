@@ -1,4 +1,4 @@
-#user needes to input ring.sdf for ligand 
+#example usage, python ring_poses_sampling.py 3XF4 bezene.sdf
 import os
 import sys
 import logging
