@@ -7,7 +7,7 @@ import subprocess
 from Bio.PDB import PDBParser, PDBIO, Select, PDBList
 from rdkit import Chem
 
-# -------------------- 配置日志记录 --------------------
+# -------------------- Configure logging --------------------
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -20,15 +20,17 @@ logger = logging.getLogger(__name__)
 
 # -------------------- Selectors --------------------
 class CleanPDBSelector(Select):
+    """Selector to remove water molecules and common ions from PDB file"""
     def accept_residue(self, residue):
         return residue.resname.strip() not in ["HOH", "WAT", "CL", "NA", "K", "MG", "CA"]
 
 class LigandSelector(Select):
+    """Selector to identify and collect valid ligands in the structure"""
     def __init__(self):
         self.valid_ligands = []
 
     def accept_residue(self, residue):
-        if residue.id[0] != " ":
+        if residue.id[0] != " ":  # Check if residue is heteroatom (ligand)
             temp_file = f"temp_{residue.resname}_{residue.id[1]}.pdb"
             io = PDBIO()
             io.set_structure(residue)
@@ -37,7 +39,7 @@ class LigandSelector(Select):
             mol = Chem.MolFromPDBFile(temp_file)
             os.remove(temp_file)
 
-            if mol and mol.GetNumAtoms() >= 9:
+            if mol and mol.GetNumAtoms() >= 9:  # Only include ligands with 9+ atoms
                 self.valid_ligands.append({
                     'resname': residue.resname,
                     'chain': residue.parent.id,
@@ -49,6 +51,7 @@ class LigandSelector(Select):
 
 # -------------------- Core Functions --------------------
 def download_pdb(pdb_id):
+    """Download PDB file from RCSB PDB database"""
     try:
         pdb_file = f"{pdb_id}.pdb"
         if not os.path.exists(pdb_file):
@@ -70,6 +73,7 @@ def download_pdb(pdb_id):
         return None
 
 def process_pdb(pdb_file):
+    """Process PDB file to extract protein and ligands"""
     try:
         parser = PDBParser(QUIET=True)
         structure = parser.get_structure("input", pdb_file)
@@ -97,6 +101,7 @@ def process_pdb(pdb_file):
         return None, None
 
 def convert_to_sdf_and_protonate(ligand_residue, resname_tag, output_dir="."):
+    """Convert ligand to SDF format and protonate it using Open Babel"""
     try:
         temp_pdb = os.path.join(output_dir, f"temp_{resname_tag}.pdb")
         io = PDBIO()
@@ -146,14 +151,15 @@ def protonate_protein_with_pdb2pqr_and_fallback(pdb_file, ligand_info, output_di
         structure = parser.get_structure("protein_with_other_ligands", pdb_file)
 
         class ProteinWithOtherLigandsSelector(Select):
+            """Selector to keep protein and other ligands except the selected one"""
             def accept_residue(self, residue):
-                if residue.id[0] == " ":
+                if residue.id[0] == " ":  # Protein residues
                     return True
                 if (residue.resname == ligand_info['resname'] and
                     residue.parent.id == ligand_info['chain'] and
                     residue.id[1] == ligand_info['resnum']):
-                    return False
-                return True
+                    return False  # Exclude selected ligand
+                return True  # Include other ligands
 
         temp_file = os.path.join(output_dir, "temp_protein_with_other_ligands.pdb")
         io = PDBIO()
@@ -222,6 +228,7 @@ def protonate_protein_with_pdb2pqr_and_fallback(pdb_file, ligand_info, output_di
         return None
 
 def run_smina_docking(protein_file, ligand_file, autobox_ligand, output_dir="."):
+    """Run molecular docking using smina"""
     try:
         # Check if smina is available
         if os.system("which smina > /dev/null 2>&1") != 0:
@@ -331,7 +338,7 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    # 强制刷新输出缓冲区
-    # 将原来的行替换为：
+    # Force flush output buffer
+    # Replace the original line with:
     sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
     main()
