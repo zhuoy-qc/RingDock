@@ -32,6 +32,7 @@ You can also analyze individual PDB files using the utilities provided:
 
 Navigate to the utils/ directory.
 
+We provide examples on several PDB files, and provide codes to reproduce our paper results.
 
 
 📊 Output & Evaluation
