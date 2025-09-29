@@ -168,7 +168,7 @@ def process_all_pdbs_parallel():
 def run_model_prediction(input_csv_path):
     """Use machine learning model for prediction and ranking"""
     # Path configuration
-    model_path = '/home/zyin/final_model_20250919_025353.pkl'  # Ensure this path is correct
+    model_path = '/home/zyin/final_model_20250919_025353.pkl'  # Change this to ensure model path are correct !!!!!!!
     output_csv_path = 'predictions_with_energy_ranked.csv'
 
     # 1. Load trained model
