@@ -1,4 +1,5 @@
-#example usage, python ring_poses_sampling.py 3XF4 bezene.sdf
+#example usage, python ring_poses_sampling.py 3XF4 benzene.sdf 
+#Then select the ligand you are interested in 3XF4  by input the corresponding number 
 import os
 import sys
 import logging
