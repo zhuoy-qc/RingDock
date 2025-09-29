@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#example usage, python sampling_need_user_input.py 3XF4 benzene.sdf 
+#Then select the ligand you are interested in 3XF4  by input the corresponding number 
 import os
 import sys
 import logging
