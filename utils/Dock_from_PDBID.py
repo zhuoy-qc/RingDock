@@ -2,6 +2,7 @@
 import os
 import sys
 import logging
+import subprocess
 from Bio.PDB import PDBParser, PDBIO, Select, PDBList
 from rdkit import Chem
 
@@ -135,7 +136,10 @@ def convert_to_sdf_and_protonate(ligand_residue, resname_tag, output_dir="."):
         logger.error(f"Error converting/protonating ligand: {e}")
         return None, None
 
-def protonate_protein(pdb_file, ligand_info, output_dir="."):
+def protonate_protein_with_pdb2pqr_and_fallback(pdb_file, ligand_info, output_dir="."):
+    """
+    Protonate protein using PDB2PQR with fallback to Open Babel.
+    """
     try:
         parser = PDBParser(QUIET=True)
         structure = parser.get_structure("protein_with_other_ligands", pdb_file)
@@ -156,24 +160,64 @@ def protonate_protein(pdb_file, ligand_info, output_dir="."):
         io.save(temp_file, select=ProteinWithOtherLigandsSelector())
         logger.debug(f"Created temporary protein file: {temp_file}")
 
-        # Check if obabel is available
-        if os.system("which obabel > /dev/null 2>&1") != 0:
-            logger.error("OpenBabel (obabel) is not installed or not in PATH")
-            return None
-
+        # Try PDB2PQR first
         protonated_file = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(pdb_file))[0]}_H.pdb")
-        obabel_cmd = f"obabel {temp_file} -O {protonated_file} -p 2>/dev/null"
-        exit_code = os.system(obabel_cmd)
-        os.remove(temp_file)
-
-        if exit_code == 0 and os.path.exists(protonated_file):
-            logger.info(f"Protonated protein saved to {protonated_file}")
+        
+        # Use the command line interface for PDB2PQR as suggested by your example
+        pdb2pqr_cmd = [
+            'pdb2pqr30',  # or 'pdb2pqr' depending on installation
+            '--ff=AMBER',
+            '--with-ph=7.4',
+            '--keep-chain',
+            '--drop-water',
+            temp_file,
+            protonated_file
+        ]
+        
+        logger.info(f"Attempting to protonate protein using PDB2PQR: {' '.join(pdb2pqr_cmd)}")
+        result = subprocess.run(pdb2pqr_cmd, capture_output=True, text=True, timeout=300) # 5 minute timeout
+        
+        if result.returncode == 0 and os.path.exists(protonated_file) and os.path.getsize(protonated_file) > 0:
+            logger.info(f"Successfully protonated protein using PDB2PQR: {protonated_file}")
+            os.remove(temp_file)  # Clean up temporary file
             return protonated_file
         else:
-            logger.error(f"Failed to protonate protein using obabel (exit code: {exit_code})")
-            return None
+            error_msg = result.stderr if result.returncode != 0 else "Output file not created or empty"
+            logger.warning(f"PDB2PQR failed for protein protonation: {error_msg}")
+            logger.info("Falling back to Open Babel for protein protonation...")
+            
+            # Fallback to Open Babel if PDB2PQR fails
+            if os.system("which obabel > /dev/null 2>&1") != 0:
+                logger.error("OpenBabel (obabel) is not installed or not in PATH for fallback")
+                os.remove(temp_file)
+                return None
+            
+            # Reset output file path for obabel
+            protonated_file_obabel = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(pdb_file))[0]}_H_obabel.pdb")
+            obabel_cmd = f"obabel {temp_file} -O {protonated_file_obabel} -h --pdb 2>/dev/null"
+            exit_code = os.system(obabel_cmd)
+            
+            os.remove(temp_file) # Clean up temporary file regardless of success/failure
+            
+            if exit_code == 0 and os.path.exists(protonated_file_obabel) and os.path.getsize(protonated_file_obabel) > 0:
+                logger.info(f"Fallback: Protonated protein using Open Babel: {protonated_file_obabel}")
+                # Rename the obabel output to the original expected name
+                os.rename(protonated_file_obabel, protonated_file)
+                return protonated_file
+            else:
+                logger.error(f"Fallback Open Babel also failed for protein protonation (exit code: {exit_code})")
+                if os.path.exists(protonated_file_obabel):
+                    os.remove(protonated_file_obabel)
+                return None
+                
+    except subprocess.TimeoutExpired:
+        logger.error("PDB2PQR command timed out")
+        os.remove(temp_file)
+        return None
     except Exception as e:
-        logger.error(f"Error protonating protein: {e}")
+        logger.error(f"Error during protein protonation (PDB2PQR or fallback): {e}")
+        if 'temp_file' in locals() and os.path.exists(temp_file):
+            os.remove(temp_file)
         return None
 
 def run_smina_docking(protein_file, ligand_file, autobox_ligand, output_dir="."):
@@ -257,7 +301,7 @@ def main():
         logger.info(f"Selected ligand: {resname_tag}")
 
         ligand_sdf, ligand_sdf_H = convert_to_sdf_and_protonate(selected_ligand['residue'], resname_tag, output_dir)
-        protonated_protein = protonate_protein(protein_file, selected_ligand, output_dir)
+        protonated_protein = protonate_protein_with_pdb2pqr_and_fallback(protein_file, selected_ligand, output_dir)
 
         print("\nProcessing complete!")
         print(f"\nFiles generated in '{output_dir}':")
