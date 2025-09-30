@@ -19,7 +19,7 @@ CONCURRENT_PROTEINS = 12      # Number of proteins to process simultaneously
 CPU_CORES_PER_SMINA = 8       # Number of CPU cores each protein job will use
 NUM_MODES = 200               # The bigger this number, the more poses sampled, suggest at least 200
 SEED = 88                     # Random seed for reproducibility
-SCORING_FUNCTION = 'vina'     # Scoring function to first step sampling ('vinardo', 'vina', 'default')
+SCORING_FUNCTION = 'vina'     # Scoring function to first step sampling ('vinardo', 'vina', 'dkoes_scoring')
 
 # === SUGGESTED FIXED PARTS ===
 EXHAUSTIVENESS = 8            # Not suggested to set too high, slow and not needed
