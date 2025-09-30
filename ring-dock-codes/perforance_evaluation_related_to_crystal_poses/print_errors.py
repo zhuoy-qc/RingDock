@@ -99,6 +99,39 @@ def calculate_absolute_errors(df_pred, df_report, rank_threshold=5):
     
     return error_df
 
+def calculate_top_errors(error_df, top_n):
+    """
+    Calculate error statistics for top N ranked predictions
+    """
+    if error_df.empty:
+        return pd.DataFrame()
+    
+    # Filter for top N ranks
+    top_n_df = error_df[error_df['Pred_Rank'] <= top_n]
+    
+    if top_n_df.empty:
+        return pd.DataFrame()
+    
+    # Calculate statistics for the top N data
+    error_columns_for_stats = ['Distance_Error', 'Offset_Error', 'RZ_Error']
+    
+    # Calculate required statistics for display
+    mean_values = top_n_df[error_columns_for_stats].mean()
+    median_values = top_n_df[error_columns_for_stats].median()
+    max_values = top_n_df[error_columns_for_stats].max()
+    
+    # Create summary DataFrame for display
+    summary_df = pd.DataFrame({
+        'mean': mean_values,
+        'median': median_values,
+        'max': max_values,
+    }).T  # Transpose to have statistics as rows and metrics as columns
+    
+    # Round the summary statistics to 2 decimal places for cleaner display[1,2,5](@ref)
+    summary_df = summary_df.round(2)
+    
+    return summary_df, top_n_df
+
 def main():
     predictions_file = "predictions_with_energy_ranked.csv"
     report_file = "reference_experimental_pication_interactions_report.csv"
@@ -109,53 +142,25 @@ def main():
         error_df = calculate_absolute_errors(df_pred, df_report, rank_threshold)
 
         if not error_df.empty:
-            # Select only the error columns for statistics
-            error_columns_for_stats = ['Distance_Error', 'Offset_Error', 'RZ_Error']
+            # Calculate and print statistics for top 1
+            print("=== TOP 1 ERROR STATISTICS ===")
+            top1_summary, top1_df = calculate_top_errors(error_df, 1)
+            if not top1_summary.empty:
+                print("Error Statistics Summary (Top 1):")
+                print(top1_summary.to_string(float_format='%.2f'))
+            else:
+                print("No top 1 predictions found")
             
-            # Calculate required statistics for display
-            mean_values = error_df[error_columns_for_stats].mean()
-            median_values = error_df[error_columns_for_stats].median()
-            max_values = error_df[error_columns_for_stats].max()
+            print("\n" + "="*50)
             
-            # Create summary DataFrame for display
-            summary_df = pd.DataFrame({
-                'mean': mean_values,
-                'median': median_values,
-                'max': max_values
-            }).T  # Transpose to have statistics as rows and metrics as columns
-            
-            # Round the summary statistics to 2 decimal places for cleaner display[1,2,5](@ref)
-            summary_df = summary_df.round(2)
-            
-            print("Error Statistics Summary:")
-            # Use to_string with float_format to ensure 2 decimal places in output[6](@ref)
-            print(summary_df.to_string(float_format='%.2f'))
-            
-            # Display top 20 largest Distance_Errors
-            print("\nTop 20 Largest Distance_Errors:")
-            # Sort by Distance_Error in descending order and select top 20
-            top20_distance_errors = error_df.nlargest(20, 'Distance_Error')[['PDB_ID', 'Protein_Cation', 'Distance_Error']]
-            # Ensure Distance_Error is displayed with 2 decimal places[6](@ref)
-            print(top20_distance_errors.to_string(index=False, float_format='%.2f'))
-            
-            # Save complete results to CSV (including all columns)
-            output_columns = [
-                'PDB_ID',
-                'Protein_Cation',  # Renamed for display
-                'Distance_Error',
-                'Offset_Error',
-                'RZ_Error',
-                'Pred_Rank',
-                'Pred_Energy'
-            ]
-            # Round the error columns in the DataFrame before saving to CSV for consistency[1,2,5](@ref)
-            error_df_to_save = error_df[output_columns].copy()
-            error_cols = ['Distance_Error', 'Offset_Error', 'RZ_Error']
-            error_df_to_save[error_cols] = error_df_to_save[error_cols].round(2)
-            error_df_to_save.to_csv("absolute_errors_report_new.csv", index=False)
-            print("\nComplete results saved to: absolute_errors_report_new.csv")
-        else:
-            print("No matching data found for calculation after including chain information")
+            # Calculate and print statistics for top 5
+            print("=== TOP 5 ERROR STATISTICS ===")
+            top5_summary, top5_df = calculate_top_errors(error_df, 5)
+            if not top5_summary.empty:
+                print("Error Statistics Summary (Top 5):")
+                print(top5_summary.to_string(float_format='%.2f'))
+            else:
+                print("No top 5 predictions found")
 
     except FileNotFoundError as e:
         print(f"File not found: {e}")
