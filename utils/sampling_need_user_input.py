@@ -1,4 +1,5 @@
 #example usage, python sampling_need_user_input.py 3XF4 benzene.sdf 
+#Known issues with the protein cation side chain residue number not corret in the ouput csv, but did not affect the docking results
 #Then select the ligand you are interested in 3XF4  by input the corresponding number 
 import os
 import sys
