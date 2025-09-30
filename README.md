@@ -11,6 +11,7 @@ conda activate ringdock_pi-cation_env
 📁 Preparation 
 Download the ring_sdf_files dir and set the path in the codes to match this dir path
 
+
 📁 Dataset-Based Usage (e.g., PoseBuster)
 To run the full pipeline on a dataset like PoseBuster:
 
@@ -22,6 +23,10 @@ Run the following scripts in that directory:
 
 python pi-cation-analysis.py, which finds all pi-cation interactions and list the distance,offset,Rz of these interactions.
 python 1_sampling.py
+
+NOTE THAT when running the sampling.py, you can change a few lines, namely scoring functional, supporting : vinardo, vina, default.
+
+
 python 2_model.py
 
 
