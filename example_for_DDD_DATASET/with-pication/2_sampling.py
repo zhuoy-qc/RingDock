@@ -118,7 +118,7 @@ def get_system_resources():
 
 def validate_config():
     """Validate configuration parameters."""
-    valid_scoring_functions = ['vinardo', 'vina', 'ad4']
+    valid_scoring_functions = ['vinardo', 'vina', 'ad4_scoring','dkoes_scoring','dkoes_fast']
     
     if SCORING_FUNCTION not in valid_scoring_functions:
         logger.error(f"Invalid scoring function: {SCORING_FUNCTION}. Valid options: {valid_scoring_functions}")
