@@ -5,7 +5,7 @@ import re
 TOP_PERCENT_PER_RESIDUE = {
     'ARG': 30,   # top % of ARG predictions
     'HIS': 50,   # top % of HIS predictions
-    'LYS': 21    # top % of LYS predictions
+    'LYS': 5    # top % of LYS predictions
 }
 # ===================================
 
