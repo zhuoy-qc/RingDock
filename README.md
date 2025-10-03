@@ -1,5 +1,5 @@
 🧬 RingDock 
-This repository provides tools for our RingDock pipepline, focusing on pi-cation interactions (cations from protein interacts with ligand aromatic rings). Other pi-related interactions developing...
+This repository provides source code for our RingDock pipepline, focusing on pi-cation interactions (cations from protein interacts with ligand aromatic rings). Other pi-related interactions developing...
 
 ⚙️ Environment Setup 
 We recommend using Conda to set up the environment.
