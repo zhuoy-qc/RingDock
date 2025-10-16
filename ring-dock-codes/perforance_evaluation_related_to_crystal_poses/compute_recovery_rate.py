@@ -5,7 +5,7 @@ import re
 TOP_PERCENT_PER_RESIDUE = {
     'ARG': 30,   # top % of ARG predictions
     'HIS': 50,   # top % of HIS predictions
-    'LYS': 5    # top % of LYS predictions
+    'LYS': 5     # top % of LYS predictions
 }
 # ===================================
 
@@ -158,12 +158,17 @@ def check_protein_matching_per_residue(report_file, predictions_file, per_residu
         subset_unique_after = set(subset_after.unique())
         predictions_not_in_exp_after_by_residue[res_type] = len(subset_unique_after & predictions_not_in_exp_after)
 
-    # Calculate percentage of predictions not in experimental that were filtered out
-    if len(predictions_not_in_exp_before) > 0:
-        filtered_out_count = len(predictions_not_in_exp_before) - len(predictions_not_in_exp_after)
-        filtered_out_percentage = (filtered_out_count / len(predictions_not_in_exp_before)) * 100
-    else:
-        filtered_out_percentage = 0
+    # Calculate percentage of non-experimental predictions filtered out PER RESIDUE (ARG and LYS)
+    filtered_out_pct_by_residue = {}
+    for res_type in ['ARG', 'LYS']:  # Only ARG and LYS as requested
+        before_count = predictions_not_in_exp_before_by_residue.get(res_type, 0)
+        after_count = predictions_not_in_exp_after_by_residue.get(res_type, 0)
+        if before_count > 0:
+            filtered_out = before_count - after_count
+            pct = (filtered_out / before_count) * 100
+        else:
+            pct = 0.0
+        filtered_out_pct_by_residue[res_type] = pct
 
     # Calculate overall recovery before ranking
     matched_all_before = unique_report_all & unique_pred_all
@@ -193,7 +198,7 @@ def check_protein_matching_per_residue(report_file, predictions_file, per_residu
             'count': len(predictions_not_in_exp_after),
             'by_residue': predictions_not_in_exp_after_by_residue
         },
-        'filtered_out_percentage': filtered_out_percentage,
+        'filtered_out_pct_by_residue': filtered_out_pct_by_residue,  # Updated key
         'per_residue_percent': per_residue_pct,
         'report_residue_counts': count_by_type(report_res_ids),
         'prediction_residue_counts': count_by_type(pred_res_ids),
@@ -245,8 +250,14 @@ def save_matching_report_txt(results, output_file="pi_cation_matching_report_per
             else:
                 f.write("  ✅ All interactions recovered!\n")
 
+        # Filtering efficiency for non-experimental predictions (ARG and LYS)
+        f.write("\nFILTERING EFFICIENCY ON NON-EXPERIMENTAL PREDICTIONS:\n")
+        f.write("-" * 50 + "\n")
+        f.write(f"  ARG: {results['filtered_out_pct_by_residue']['ARG']:.2f}% filtered out\n")
+        f.write(f"  LYS: {results['filtered_out_pct_by_residue']['LYS']:.2f}% filtered out\n\n")
+
         # Residue counts
-        f.write("\n\nUNIQUE CATIONIC RESIDUE COUNTS (by type):\n")
+        f.write("UNIQUE CATIONIC RESIDUE COUNTS (by type):\n")
         f.write("-" * 40 + "\n")
         rpt = results['report_residue_counts']
         pred = results['prediction_residue_counts']
@@ -318,8 +329,10 @@ def main():
         pi_cation_recovery_rate = (total_recovered / total_experimental * 100) if total_experimental > 0 else 0
         print(f"\npi-cation recovery rate: {total_recovered}/{total_experimental} ({pi_cation_recovery_rate:.2f}%)")
 
-        # Percentage of predictions not in experimental that were filtered out
-        print(f"\nPERCENTAGE OF NON-EXPERIMENTAL PREDICTIONS FILTERED OUT BY RANKING MODEL: {results['filtered_out_percentage']:.2f}%")
+        # Percentage of non-experimental predictions filtered out (ARG and LYS only)
+        print(f"\nPERCENTAGE OF NON-EXPERIMENTAL PREDICTIONS FILTERED OUT:")
+        print(f"  ARG: {results['filtered_out_pct_by_residue']['ARG']:.2f}%")
+        print(f"  LYS: {results['filtered_out_pct_by_residue']['LYS']:.2f}%")
 
         # Per-residue missed details - PRINT ALL
         print(f"\nPER-RESIDUE MISSED DETAILS AFTER RANKING:")
