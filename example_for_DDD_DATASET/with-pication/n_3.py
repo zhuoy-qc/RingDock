@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-import logging  # ✅ IMPORT LOGGING EARLY
+import logging 
 import os
 import sys
 import glob
@@ -23,8 +22,8 @@ import warnings
 
 # ==================== 🔑 CONFIGURE MODEL PATHS HERE ====================
 # ⚠️ UPDATE THESE TO YOUR ACTUAL MODEL LOCATIONS
-STANDARD_MODEL_PATH = "/home/zyin/final_model_20250919_025353.pkl"        # ← CHANGE THIS
-ARG_MODEL_PATH = "/home/zyin/final_model_ARG_optimized.pkl"           # ← YOUR PATH (already correct)
+STANDARD_MODEL_PATH = "/home/zyin/final_model_20250919_025353.pkl"   
+ARG_MODEL_PATH = "/home/zyin/final_model_ARG_optimized.pkl"         
 # =====================================================================
 
 # Filter warnings
