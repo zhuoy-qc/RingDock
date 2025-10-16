@@ -7,7 +7,7 @@ TOP_PERCENT_PER_RESIDUE = {
     'HIS': 50,   # top % of HIS predictions
     'LYS': 5     # top % of LYS predictions
 }
-DIHEDRAL_CUTOFF_ARG = 35  # degrees
+DIHEDRAL_CUTOFF_ARG = 30  # degrees
 # ===================================
 
 def extract_residue_id(protein_str):
