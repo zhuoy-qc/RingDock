@@ -7,7 +7,7 @@ TOP_PERCENT_PER_RESIDUE = {
     'HIS': 50,   # top % of HIS predictions
     'LYS': 5     # top % of LYS predictions
 }
-DIHEDRAL_CUTOFF_ARG = 35  # degrees cutoff to consider for ARG, if too large, pi-cation is too weak to be considered 
+DIHEDRAL_CUTOFF_ARG = 40  # degrees cutoff to consider for ARG, if too large, pi-cation is too weak to be considered 
 # ===================================
 
 def extract_residue_id(protein_str):
