@@ -1,5 +1,5 @@
 🧬 RingDock 
-This repository provides source code for our RingDock pipepline, focusing on pi-cation interactions (cations from protein interacts with ligand aromatic rings). Other pi-related interactions developing...
+Our code applys to any protein pocket contains at least one postively charge amino acid. This repository provides source code for our RingDock pipepline, focusing on pi-cation interactions (cations from protein interacts with ligand aromatic rings). Other pi-related interactions developing...
 
 ⚙️ Environment Setup 
 We recommend using Conda to set up the environment.
