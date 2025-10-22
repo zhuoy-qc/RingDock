@@ -6,15 +6,13 @@ from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 import pickle
 
-# --- SETUP PATHS HERE ---
-REFERENCE_RING_DIR = "/data1/zyin/ring_sdf_files"
-LOG_FILE = "docking_prepare.log"
-# --- END PATH SETUP ---
-
-# --- SETUP FILE PATTERNS HERE ---
+# --- SETUP CORRECTLY HERE ---
+REFERENCE_RING_DIR = "/data1/zyin/ring_sdf_files" #change to match
 PDB_FILE_PATTERN = "*_*_protein.pdb"  # change to match the format of your protein PDB file format!
-# --- END FILE PATTERN SETUP ---
+# --- END  SETUP ---
 
+
+LOG_FILE = "docking_prepare.log"
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.handlers.clear()
