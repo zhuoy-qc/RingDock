@@ -1,3 +1,4 @@
+#*_*_protein.pdb in this code, change if your PDB file is named differently
 import os
 import glob
 import subprocess
@@ -5,28 +6,19 @@ import logging
 from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 import pickle
-
-# === Logging: full details to file, ONLY essential info to terminal ===
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.handlers.clear()
-
-# File: log everything
 file_handler = logging.FileHandler("docking_prepare.log")
 file_handler.setLevel(logging.DEBUG)
 file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(file_formatter)
-
-# Console: ONLY show messages we explicitly want (set level to INFO, but use DEBUG for noise)
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
 console_formatter = logging.Formatter('%(message)s')
 console_handler.setFormatter(console_formatter)
-
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
-
-
 def protonate_single_file_with_pdb2pqr(args):
     pdb_file, subdir_path = args
 
