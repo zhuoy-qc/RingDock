@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 # === CONFIGURABLE PARAMETERS ===
 
 # === SUGGESTED CHANGABLE PARTS ===
-CONCURRENT_PROTEINS = 12      # Number of proteins to process simultaneously
+CONCURRENT_PROTEINS = 12      # Number of proteins to process simultaneously, this number * CPU_CORES_PER_SMINA = TOTAL NUM of CPUs to use
 CPU_CORES_PER_SMINA = 8       # Number of CPU cores each protein job will use
 NUM_MODES = 2000               # The bigger this number, the more poses sampled, suggest 200 to 2000,  larger will slower the next 3 model input prepare step
 SEED = 88                     # Random seed for reproducibility
