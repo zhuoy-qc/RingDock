@@ -1,4 +1,4 @@
-#*_*_protein.pdb in this code, change if your PDB file is named differently
+#*_*_protein.pdb in this code, change if your PDB file is named differently (line 106)
 import os
 import glob
 import subprocess
