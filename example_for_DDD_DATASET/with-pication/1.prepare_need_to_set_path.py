@@ -6,11 +6,12 @@ from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 import pickle
 
-# --- SETUP PATHS HERE ---
+# --- SETUP PATHS ---
 REFERENCE_RING_DIR = "/data1/zyin/ring_sdf_files"
-LOG_FILE = "docking_prepare.log"
-# --- END PATH SETUP ---
+# --- SETUP PATHS ---
 
+
+LOG_FILE = "docking_prepare.log"
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.handlers.clear()
