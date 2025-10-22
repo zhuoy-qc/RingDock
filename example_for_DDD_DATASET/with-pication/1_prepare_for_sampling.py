@@ -103,7 +103,7 @@ def find_and_protonate_pdb_files(base_dir):
 
     for subdir in subdirs:
         subdir_path = os.path.join(base_dir, subdir)
-        pdb_pattern = os.path.join(subdir_path, "*_*_protein.pdb")
+        pdb_pattern = os.path.join(subdir_path, "*_*_protein.pdb")   #change to match the format of your protein PDB file format!
         pdb_files = glob.glob(pdb_pattern)
         pdb_files_to_process.extend([(pdb_file, subdir_path) for pdb_file in pdb_files])
 
