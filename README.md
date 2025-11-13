@@ -1,6 +1,10 @@
 🧬 RingDock 
 Our code applys to any protein pocket contains at least one postively charge amino acid. This repository provides source code for our RingDock pipepline, focusing on pi-cation interactions (cations from protein interacts with ligand aromatic rings). Other pi-related interactions developing...
 
+![My Diagram](RingDock_workflow.png)
+
+
+
 ⚙️ Environment Setup 
 We recommend using Conda to set up the environment.
 
@@ -47,4 +51,4 @@ Compute Recovery rate for π-cation interactions
 
 Structural error metrics
 
-![My Diagram](RingDock_workflow.png)
+
