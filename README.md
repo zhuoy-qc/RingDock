@@ -47,4 +47,4 @@ Compute Recovery rate for π-cation interactions
 
 Structural error metrics
 
-![My Diagram](diagram.png)
+![My Diagram](RingDock_workflow.png)
