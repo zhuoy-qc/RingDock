@@ -3,23 +3,40 @@ import os
 import subprocess
 import re
 from pathlib import Path
+import multiprocessing as mp
+from functools import partial
 
-def run_propka_and_extract_pka(pdb_file, residue_info):
+def find_pdb_files(directory, pdb_pattern="*_only_protein.pdb"):
     """
-    Run propka3 on a PDB file and extract the pKa value for a specific residue.
+    Find PDB files in a directory matching the given pattern.
     
     Args:
-        pdb_file: Path to the PDB file
-        residue_info: String in format like "ARG-264-A"
+        directory: Directory to search in
+        pdb_pattern: Pattern to match PDB files (default: "*_only_protein.pdb")
     
     Returns:
-        pKa value as float, or None if not found
+        List of matching PDB files
     """
+    return [f for f in os.listdir(directory) if f.endswith(pdb_pattern.replace("*", ""))]
+
+def run_propka_and_extract_pka(args):
+    """
+    Run propka3 on a PDB file and extract the pKa value for a specific residue.
+    This function is designed to work with multiprocessing.
+    
+    Args:
+        args: Tuple containing (directory, pdb_file, residue_info, pdb_pattern)
+    
+    Returns:
+        tuple: (directory, residue_info, pKa_value)
+    """
+    directory, pdb_file, residue_info, pdb_pattern = args
+    
     # Extract residue name, number, and chain from residue_info
     match = re.match(r'([A-Z]+)-(\d+)-([A-Z])', residue_info)
     if not match:
         print(f"Invalid residue format: {residue_info}")
-        return None
+        return directory, residue_info, None
     
     res_name = match.group(1)
     res_num = int(match.group(2))
@@ -27,6 +44,14 @@ def run_propka_and_extract_pka(pdb_file, residue_info):
     
     # Create the .pka filename based on the PDB filename
     pka_filename = pdb_file.replace('.pdb', '.pka')
+    
+    # Change to the directory
+    original_dir = os.getcwd()
+    try:
+        os.chdir(directory)
+    except FileNotFoundError:
+        print(f"Directory {directory} not found")
+        return directory, residue_info, None
     
     # Check if .pka file already exists
     if os.path.exists(pka_filename):
@@ -41,14 +66,20 @@ def run_propka_and_extract_pka(pdb_file, residue_info):
             print(f"Error running propka3 on {pdb_file}: {e}")
             print(f"stdout: {e.stdout}")
             print(f"stderr: {e.stderr}")
-            return None
+            os.chdir(original_dir)
+            return directory, residue_info, None
         except FileNotFoundError:
             print("propka3 command not found. Please make sure propka3 is installed and in PATH.")
-            return None
+            os.chdir(original_dir)
+            return directory, residue_info, None
 
     # Extract pKa from the .pka file (either existing or newly created)
     pka_value = extract_pka_from_propka_file(pka_filename, residue_info)
-    return pka_value
+    
+    # Return to original directory
+    os.chdir(original_dir)
+    
+    return directory, residue_info, pka_value
 
 def extract_pka_from_propka_file(propka_file, residue_info):
     """
@@ -135,64 +166,94 @@ def extract_pka_from_propka_file(propka_file, residue_info):
     
     return None
 
-def process_csv_and_add_pka(input_csv, output_csv):
+def extract_residue_type(protein_str):
+    """Extract just the residue type: 'ARG', 'HIS', or 'LYS'."""
+    match = re.match(r'([A-Z]+)-', str(protein_str))
+    if match:
+        res_code = match.group(1).upper()
+        if res_code in {'ARG', 'HIS', 'LYS'}:
+            return res_code
+    return None
+
+def process_csv_and_add_pka(input_csv, output_csv, pdb_pattern="*_only_protein.pdb", n_jobs=96):
     """
-    Process the CSV file, run propka3 on each PDB file, add pKa values as a new column,
-    and save only rows with pKa > 7.4 to the output CSV.
+    Process the CSV file using multiple processes, run propka3 on each PDB file, 
+    add pKa values as a new column, and save only rows with pKa > 7.4 to the output CSV.
     
     Args:
         input_csv: Path to input CSV file
         output_csv: Path to output CSV file with added pKa column (only pKa > 7.4)
+        pdb_pattern: Pattern to match PDB files (default: "*_only_protein.pdb")
+        n_jobs: Number of parallel jobs (default: 96)
     """
+    # Get available CPUs
+    available_cpus = mp.cpu_count()
+    
+    # Default to 96 jobs if at least 96 CPUs are available, otherwise use available CPUs
+    if n_jobs == 96 and available_cpus < 96:
+        print(f"Only {available_cpus} CPU(s) available, using {available_cpus} jobs instead of 96")
+        n_jobs = available_cpus
+    
     # Read the CSV file
     df = pd.read_csv(input_csv)
     
     # Create a new column for pKa values
     df['pKa'] = None
     
-    # Get the current working directory to return to later
-    original_dir = os.getcwd()
-    
+    # Prepare arguments for multiprocessing
+    tasks = []
     for index, row in df.iterrows():
         directory = row['Directory']
         protein_info = row['Protein']
         
-        print(f"Processing {directory}, residue {protein_info}")
-        
-        # Change to the directory
+        # Find the PDB file in the directory
+        original_dir = os.getcwd()
         try:
             os.chdir(directory)
+            pdb_files = find_pdb_files('.', pdb_pattern)
+            os.chdir(original_dir)
+            
+            if not pdb_files:
+                print(f"No PDB files matching pattern '{pdb_pattern}' found in {directory}, skipping...")
+                continue
+            
+            pdb_file = pdb_files[0]  # Use the first match
+            print(f"Found PDB file: {pdb_file} in {directory}")
+            
+            tasks.append((directory, pdb_file, protein_info, pdb_pattern))
         except FileNotFoundError:
             print(f"Directory {directory} not found, skipping...")
             continue
-        
-        # Find the *_only_protein.pdb file
-        pdb_files = [f for f in os.listdir('.') if f.endswith('_only_protein.pdb')]
-        if not pdb_files:
-            print(f"No *_only_protein.pdb file found in {directory}, skipping...")
+        finally:
             os.chdir(original_dir)
-            continue
+    
+    # Limit number of jobs to the number of tasks
+    n_jobs = min(n_jobs, len(tasks))
+    
+    print(f"Processing {len(tasks)} tasks using {n_jobs} parallel jobs...")
+    print(f"Available CPUs: {available_cpus}")
+    
+    # Process tasks in parallel
+    with mp.Pool(processes=n_jobs) as pool:
+        results = pool.map(run_propka_and_extract_pka, tasks)
+    
+    # Update the dataframe with results
+    for directory, residue_info, pka_value in results:
+        # Find the corresponding row in the dataframe
+        mask = (df['Directory'] == directory) & (df['Protein'] == residue_info)
+        indices = df[mask].index
         
-        pdb_file = pdb_files[0]  # Use the first match
-        print(f"Found PDB file: {pdb_file}")
-        
-        # Run propka3 and get pKa
-        pka_value = run_propka_and_extract_pka(pdb_file, protein_info)
-        
-        # Check if pKa is <= 7.4 and print if so
-        if pka_value is not None:
-            if pka_value <= 7.4:
-                print(f"WARNING: Residue {protein_info} in {directory} has pKa = {pka_value:.2f} (<= 7.4) - Will be filtered out")
+        for idx in indices:
+            df.at[idx, 'pKa'] = pka_value
+            
+            # Print status based on pKa value
+            if pka_value is not None:
+                if pka_value <= 7.4:
+                    print(f"WARNING: Residue {residue_info} in {directory} has pKa = {pka_value:.2f} (<= 7.4) - Will be filtered out")
+                else:
+                    print(f"Residue {residue_info} in {directory} has pKa = {pka_value:.2f} (> 7.4) - Will be included")
             else:
-                print(f"Residue {protein_info} in {directory} has pKa = {pka_value:.2f} (> 7.4) - Will be included")
-        else:
-            print(f"Could not determine pKa for {protein_info} in {directory}")
-        
-        # Update the DataFrame with the pKa value
-        df.at[index, 'pKa'] = pka_value
-        
-        # Return to original directory
-        os.chdir(original_dir)
+                print(f"Could not determine pKa for {residue_info} in {directory}")
     
     # Filter the dataframe to include only rows with pKa > 7.4
     filtered_df = df[df['pKa'].notna() & (df['pKa'] > 7.4)]
@@ -202,14 +263,31 @@ def process_csv_and_add_pka(input_csv, output_csv):
     print(f"Entries with pKa > 7.4: {len(filtered_df)}")
     print(f"Entries filtered out (pKa <= 7.4): {len(df) - len(filtered_df)}")
     
-    # Show which entries were filtered out
+    # Calculate and print filtered out statistics by residue type
     low_pka_entries = df[df['pKa'].notna() & (df['pKa'] <= 7.4)]
+    
     if not low_pka_entries.empty:
-        print("\nFiltered out entries (pKa <= 7.4):")
-        for _, row in low_pka_entries.iterrows():
-            print(f"  {row['Protein']} in {row['Directory']}: pKa = {row['pKa']:.2f}")
+        # Add residue type column
+        low_pka_entries = low_pka_entries.copy()
+        low_pka_entries['ResidueType'] = low_pka_entries['Protein'].apply(extract_residue_type)
+        
+        # Calculate counts and percentages for each residue type
+        all_entries = df[df['pKa'].notna()].copy()
+        all_entries['ResidueType'] = all_entries['Protein'].apply(extract_residue_type)
+        
+        for res_type in ['ARG', 'HIS', 'LYS']:
+            total_res_type = len(all_entries[all_entries['ResidueType'] == res_type])
+            filtered_out_res_type = len(low_pka_entries[low_pka_entries['ResidueType'] == res_type])
+            
+            if total_res_type > 0:
+                percentage = (filtered_out_res_type / total_res_type) * 100
+                print(f"{res_type} filtered out: {filtered_out_res_type}/{total_res_type} ({percentage:.2f}%)")
+            else:
+                print(f"{res_type} filtered out: 0/0 (0.00%)")
     else:
-        print("\nNo entries were filtered out (no pKa <= 7.4 found)")
+        print("ARG filtered out: 0/0 (0.00%)")
+        print("HIS filtered out: 0/0 (0.00%)")
+        print("LYS filtered out: 0/0 (0.00%)")
     
     # Save the filtered CSV (only entries with pKa > 7.4)
     filtered_df.to_csv(output_csv, index=False)
@@ -218,4 +296,16 @@ def process_csv_and_add_pka(input_csv, output_csv):
 # Usage
 input_csv = "reference_experimental_pication_interactions_report.csv"
 output_csv = "reference_experimental_pication_interactions_report_with_pka_filtered.csv"
-process_csv_and_add_pka(input_csv, output_csv)
+
+# You can change the pdb_pattern to match different file naming conventions
+# Examples:
+# pdb_pattern = "*.pdb"  # For all .pdb files
+# pdb_pattern = "*_protein.pdb"  # For files ending with _protein.pdb
+# pdb_pattern = "*_clean.pdb"  # For files ending with _clean.pdb
+
+process_csv_and_add_pka(
+    input_csv=input_csv, 
+    output_csv=output_csv, 
+    pdb_pattern="*_only_protein.pdb",  # Change this pattern as needed
+    n_jobs=96  # Default to 96 jobs, but will adjust if fewer CPUs available
+)
