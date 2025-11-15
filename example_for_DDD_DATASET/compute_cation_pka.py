@@ -7,29 +7,11 @@ import multiprocessing as mp
 from functools import partial
 
 def find_pdb_files(directory, pdb_pattern="*_only_protein.pdb"):
-    """
-    Find PDB files in a directory matching the given pattern.
-    
-    Args:
-        directory: Directory to search in
-        pdb_pattern: Pattern to match PDB files (default: "*_only_protein.pdb")
-    
-    Returns:
-        List of matching PDB files
-    """
+
     return [f for f in os.listdir(directory) if f.endswith(pdb_pattern.replace("*", ""))]
 
 def run_propka_and_extract_pka(args):
-    """
-    Run propka3 on a PDB file and extract the pKa value for a specific residue.
-    This function is designed to work with multiprocessing.
-    
-    Args:
-        args: Tuple containing (directory, pdb_file, residue_info, pdb_pattern)
-    
-    Returns:
-        tuple: (directory, residue_info, pKa_value)
-    """
+ 
     directory, pdb_file, residue_info, pdb_pattern = args
     
     # Extract residue name, number, and chain from residue_info
@@ -297,11 +279,7 @@ def process_csv_and_add_pka(input_csv, output_csv, pdb_pattern="*_only_protein.p
 input_csv = "reference_experimental_pication_interactions_report.csv"
 output_csv = "reference_experimental_pication_interactions_report_with_pka_filtered.csv"
 
-# You can change the pdb_pattern to match different file naming conventions
-# Examples:
-# pdb_pattern = "*.pdb"  # For all .pdb files
-# pdb_pattern = "*_protein.pdb"  # For files ending with _protein.pdb
-# pdb_pattern = "*_clean.pdb"  # For files ending with _clean.pdb
+
 
 process_csv_and_add_pka(
     input_csv=input_csv, 
