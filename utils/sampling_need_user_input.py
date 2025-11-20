@@ -185,7 +185,7 @@ def run_smina_docking(protein_file, ligand_file, autobox_ligand, output_dir=".")
         cmd = (
             f"smina -r {protein_file} -l {ligand_file} "
             f"--autobox_ligand {autobox_ligand} -o {output_file} "
-            "--exhaustiveness 100 --seed 1 --scoring vinardo --num_modes 150  --energy_range 20   --autobox_add 1 --min_rmsd_filter 1"
+            "--seed 1 --scoring vina --num_modes 200  --energy_range 20   --autobox_add 1 "
         )
         logger.info(f"Running docking command:\n{cmd}")
         
