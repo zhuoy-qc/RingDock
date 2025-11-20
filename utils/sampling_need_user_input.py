@@ -6,8 +6,6 @@ import sys
 import logging
 from Bio.PDB import PDBParser, PDBIO, Select, PDBList
 from rdkit import Chem
-
-# -------------------- 配置日志记录 --------------------
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -18,7 +16,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# -------------------- Selectors --------------------
 class CleanPDBSelector(Select):
     def accept_residue(self, residue):
         return residue.resname.strip() not in ["HOH", "WAT", "CL", "NA", "K", "MG", "CA"]
@@ -47,7 +44,6 @@ class LigandSelector(Select):
                 })
         return False
 
-# -------------------- Core Functions --------------------
 def download_pdb(pdb_id):
     try:
         pdb_file = f"{pdb_id}.pdb"
@@ -288,7 +284,5 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    # 强制刷新输出缓冲区
-    # 将原来的行替换为：
     sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
     main()
