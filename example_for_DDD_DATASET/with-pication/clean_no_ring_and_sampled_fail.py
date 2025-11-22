@@ -25,8 +25,9 @@ timeout_pdbs = set()
 with open('smina_timeouts.log', 'r') as f:
     for line in f:
         if 'TIMEOUT' in line:
-            # Extract PDB ID from the protein path (e.g., /PDBBIND_2011-2019_with_pi-cation/3zxv/)
-            match = re.search(r'/PDBBIND_2011-2019_with_pi-cation/([0-9a-z]{4})/', line)
+            # Extract PDB ID from the protein path - looking for the directory name
+            # Pattern: /.../PDBID/PDBID_protein_protonated.pdb
+            match = re.search(r'/([0-9a-z]{4})/\1_protein_protonated\.pdb', line)
             if match:
                 pdb_id = match.group(1).lower()
                 timeout_pdbs.add(pdb_id)
