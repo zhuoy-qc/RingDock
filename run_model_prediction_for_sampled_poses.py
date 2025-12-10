@@ -432,7 +432,7 @@ def run_model_prediction(temp_csv):
         if c in df_final.columns:
             df_final[c] = pd.to_numeric(df_final[c], errors='coerce').round(2)
 
-    output_file = 'predictions_with_energy_ranked.csv'
+    output_file = 'all_sampled_poses_with-pi-cation-interactions.csv'
     df_final.to_csv(output_file, index=False)
     logger.info(f"💾 Final results saved to: {output_file}")
     return output_file
