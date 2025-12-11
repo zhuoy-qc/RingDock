@@ -8,21 +8,37 @@ def analyze_pi_cation_recovery_detailed():
 
     # Group reference interactions by PDB ID extracted from Directory column
     ref_by_pdb = {}
+    debug_ref_shown = False
     for _, row in ref_df.iterrows():
         # Extract PDB ID from Directory column
         directory = row['Directory']
-        # For format like: 8A2D_KXY, extract the part before underscore if exists
-        if '_' in directory:
-            pdb_id = directory
+        
+        # NEW LOGIC: Handle the 'complexes_' prefix and repeated PDB ID
+        # Example: 'complexes_6QU4_JJ2_6QU4_JJ2' -> '6QU4_JJ2'
+        # Split by '_'
+        dir_parts = directory.split('_')
+        if len(dir_parts) >= 3 and dir_parts[0] == 'complexes':
+            # The PDB ID seems to be the second element (index 1)
+            pdb_id = f"{dir_parts[1]}_{dir_parts[2]}" 
         else:
-            pdb_id = directory
+            # Fallback to original logic if format doesn't match expectation
+            if '_' in directory:
+                pdb_id = directory
+            else:
+                pdb_id = directory
 
         if pdb_id not in ref_by_pdb:
             ref_by_pdb[pdb_id] = []
         ref_by_pdb[pdb_id].append((row['Protein'], row['Ring_Type']))
+        
+        # Debug: Print one example from reference data
+        if not debug_ref_shown:
+            print(f"DEBUG REFERENCE - Extracted PDB ID: {pdb_id}, Protein: {row['Protein']}, Ring Type: {row['Ring_Type']}, Original Directory: {directory}")
+            debug_ref_shown = True
 
     # Get pose 1 interactions grouped by PDB ID
     pose1_by_pdb = {}
+    debug_sampled_shown = False
     for _, row in sampled_df.iterrows():
         # Extract the pose number from PDB_File column
         pdb_file = row['PDB_File']
@@ -55,6 +71,11 @@ def analyze_pi_cation_recovery_detailed():
             if pdb_id not in pose1_by_pdb:
                 pose1_by_pdb[pdb_id] = []
             pose1_by_pdb[pdb_id].append((row['Protein'], row['Ring_Type']))
+            
+            # Debug: Print one example from sampled data
+            if not debug_sampled_shown:
+                print(f"DEBUG SAMPLED - Extracted PDB ID: {pdb_id}, Pose Number: {int(match.group(1))}, Protein: {row['Protein']}, Ring Type: {row['Ring_Type']}, PDB_File: {pdb_file}")
+                debug_sampled_shown = True
 
     print("Detailed Pose 1 Recovery Analysis by PDB ID:")
     print("="*60)
@@ -101,7 +122,7 @@ def analyze_pi_cation_recovery_detailed():
             if pose1_interactions - ref_interactions:
                 print(f"    False positives: {sorted(pose1_interactions - ref_interactions)}")
             if ref_interactions - pose1_interactions:
-                                print(f"    Missed: {sorted(ref_interactions - pose1_interactions)}")
+                print(f"    Missed: {sorted(ref_interactions - pose1_interactions)}")
 
     print("\n" + "="*60)
     print("SUMMARY:")
