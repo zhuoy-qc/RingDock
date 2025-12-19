@@ -131,91 +131,50 @@ def get_affinities_from_sdf(sdf_path):
 def process_single_directory(dir_path):
     dir_path = Path(dir_path)
     full_dir_name = dir_path.name
-    
+
     output_file = dir_path / "exhaust50_dock.sdf"
     ligand_autobox_file = dir_path / f"{full_dir_name}_ligand.sdf"
-    
+
     print(f"Checking files in {dir_path}:")
     print(f"  Full directory name: {full_dir_name}")
     print(f"  Output file: {output_file} - exists: {output_file.exists()}")
     print(f"  Ligand autobox file: {ligand_autobox_file} - exists: {ligand_autobox_file.exists()}")
-    
+
     if not (output_file.exists() and ligand_autobox_file.exists()):
         print(f"Warning: Required files not found in {dir_path}, skipping...")
         return None
-    
+
     print(f"Processing directory: {dir_path}")
     print(f"Computing symmetry-corrected RMSDs for {full_dir_name}...")
-    
+
     affinities = get_affinities_from_sdf(str(output_file))
     print(f"Found {len(affinities)} affinities in {output_file}")
-    
+
     rmsd_values = compute_symmetry_corrected_rmsds_with_rdkit(str(output_file), str(ligand_autobox_file))
-    
+
     if rmsd_values is not None:
-        valid_rmsds = [r for r in rmsd_values if r is not None and not (isinstance(r, float) and np.isnan(r))]
-        
-        if valid_rmsds and len(affinities) > 0:
-            sorted_rmsds = sorted(valid_rmsds)
-            
-            top1_rmsd = sorted_rmsds[0] if len(sorted_rmsds) > 0 else None
-            
-            rmsds_less_than_2 = [r for r in valid_rmsds if r < 2.0]
-            percentage_less_than_2 = (len(rmsds_less_than_2) / len(valid_rmsds)) * 100 if valid_rmsds else 0
-            
-            sorted_affinities = sorted(affinities)
-            
-            best_affinity_idx = affinities.index(min(affinities))
-            best_affinity_rmsd = rmsd_values[best_affinity_idx] if best_affinity_idx < len(rmsd_values) else None
-            lowest_affinity = min(affinities)
-            
-            rmsd_indices = [(i, rmsd_values[i]) for i in range(len(rmsd_values))]
-            sorted_by_rmsd = sorted(rmsd_indices, key=lambda x: x[1])
-            
-            poses_with_rmsd_less_than_2_by_rmsd = []
-            for idx, (original_idx, rmsd_val) in enumerate(sorted_by_rmsd):
-                if rmsd_val < 2.0:
-                    pose_rank_by_affinity = sorted(range(len(affinities)), key=lambda i: affinities[i]).index(original_idx) + 1
-                    poses_with_rmsd_less_than_2_by_rmsd.append(pose_rank_by_affinity)
-            
-            lowest_rmsd_idx = valid_rmsds.index(top1_rmsd) if top1_rmsd is not None else -1
-            lowest_rmsd_pose_rank = sorted(range(len(affinities)), key=lambda i: affinities[i]).index(lowest_rmsd_idx) + 1 if lowest_rmsd_idx != -1 else -1
-            
-            is_best_affinity_lowest_rmsd = (best_affinity_rmsd == top1_rmsd)
-            
-            details_for_valid_poses_by_rmsd = []
-            for idx, (original_idx, rmsd_val) in enumerate(sorted_by_rmsd):
-                if rmsd_val < 2.0:
-                    pose_rank_by_affinity = sorted(range(len(affinities)), key=lambda i: affinities[i]).index(original_idx) + 1
-                    details_for_valid_poses_by_rmsd.append((pose_rank_by_affinity, rmsd_val, affinities[original_idx]))
-            
-            print(f"PDB ID {full_dir_name}:")
-            print(f"  Lowest RMSD: {top1_rmsd:.4f} Å")
-            print(f"  Lowest affinity RMSD: {best_affinity_rmsd:.4f} Å")
-            print(f"  Lowest affinity: {lowest_affinity:.3f}")
-            print(f"  Pose rank of lowest RMSD: {lowest_rmsd_pose_rank}")
-            print(f"  Best affinity pose RMSD > 2 Å: {best_affinity_rmsd > 2.0 if best_affinity_rmsd is not None else 'N/A'}")
-            print(f"  Best affinity pose is lowest RMSD: {is_best_affinity_lowest_rmsd}")
-            print(f"  Poses with RMSD < 2 Å (sorted by RMSD): {poses_with_rmsd_less_than_2_by_rmsd}")
-            print(f"  Details for poses with RMSD < 2 Å (sorted by RMSD): {[(p, f'{r:.4f}', f'{a:.3f}') for p, r, a in details_for_valid_poses_by_rmsd]}")
-            
-            return {
-                'pdb_id': full_dir_name,
-                'top1_rmsd': top1_rmsd,
-                'best_affinity_rmsd': best_affinity_rmsd,
-                'lowest_affinity': lowest_affinity,
-                'percentage_less_than_2': percentage_less_than_2,
-                'total_poses': len(valid_rmsds),
-                'valid_poses': len(rmsds_less_than_2),
-                'affinities': affinities,
-                'sorted_affinities': sorted_affinities,
-                'poses_with_rmsd_less_than_2_by_rmsd': poses_with_rmsd_less_than_2_by_rmsd,
-                'lowest_rmsd_pose_rank': lowest_rmsd_pose_rank,
-                'is_best_affinity_lowest_rmsd': is_best_affinity_lowest_rmsd,
-                'details_for_valid_poses_by_rmsd': details_for_valid_poses_by_rmsd
-            }
+        # Calculate Vina ranks
+        vina_ranks = get_vina_ranks(affinities)
+
+        # Create detailed results for each pose
+        detailed_results = []
+        for i, (rmsd_val, affinity, rank) in enumerate(zip(rmsd_values, affinities, vina_ranks)):
+            if not (isinstance(rmsd_val, float) and np.isnan(rmsd_val)):
+                pdb_id = full_dir_name
+                pose_num = i + 1
+                detailed_results.append({
+                    'PDB_ID': pdb_id,
+                    'Pose': pose_num,
+                    'RMSD': round(rmsd_val, 4),
+                    'Vina_Score': round(affinity, 3),
+                    'Vina_Rank': rank
+                })
+
+        if detailed_results:
+            print(f"Generated {len(detailed_results)} pose entries for {full_dir_name}")
+            return detailed_results
         else:
-            print(f"No valid RMSD values or affinities computed for {full_dir_name}")
+            print(f"No valid results generated for {full_dir_name}")
             return None
     else:
         print(f"Failed to compute RMSDs for {full_dir_name}")
@@ -224,67 +183,35 @@ def process_single_directory(dir_path):
 def main():
     current_dir = Path('.')
     depth1_dirs = [d for d in current_dir.iterdir() if d.is_dir()]
-    
+
     print(f"Found {len(depth1_dirs)} directories to process")
-    
-    results = []
+
+    all_detailed_results = []
     for dir_path in depth1_dirs:
         result = process_single_directory(dir_path)
         if result is not None:
-            results.append(result)
-    
-    print("\n" + "="*80)
-    print("FINAL SUMMARY")
-    print("="*80)
-    for result in results:
-        print(f"PDB ID: {result['pdb_id']}")
-        print(f"  Lowest RMSD: {result['top1_rmsd']:.4f} Å")
-        print(f"  Lowest affinity RMSD: {result['best_affinity_rmsd']:.4f} Å")
-        print(f"  Lowest affinity: {result['lowest_affinity']:.3f}")
-        print(f"  Pose rank of lowest RMSD: {result['lowest_rmsd_pose_rank']}")
-        print(f"  Best affinity pose RMSD > 2 Å: {result['best_affinity_rmsd'] > 2.0 if result['best_affinity_rmsd'] is not None else 'N/A'}")
-        print(f"  Best affinity pose is lowest RMSD: {result['is_best_affinity_lowest_rmsd']}")
-        print(f"  Poses with RMSD < 2 Å (sorted by RMSD): {result['poses_with_rmsd_less_than_2_by_rmsd']}")
-        print(f"  Details for poses with RMSD < 2 Å (sorted by RMSD): {[(p, f'{r:.4f}', f'{a:.3f}') for p, r, a in result['details_for_valid_poses_by_rmsd']]}")
-        print("-" * 50)
-    
-    best_affinity_rmsd_over_2 = sum(1 for r in results if r['best_affinity_rmsd'] is not None and r['best_affinity_rmsd'] > 2.0)
-    not_lowest_rmsd = sum(1 for r in results if r['is_best_affinity_lowest_rmsd'] == False)
-    
-    print("\n" + "="*80)
-    print("OVERALL STATISTICS")
-    print("="*80)
-    print(f"Total systems processed: {len(results)}")
-    print(f"Number of systems where best affinity pose RMSD > 2 Å: {best_affinity_rmsd_over_2}")
-    print(f"Number of systems where best affinity pose is NOT the lowest RMSD: {not_lowest_rmsd}")
-    print(f"Percentage of systems where best affinity pose RMSD > 2 Å: {best_affinity_rmsd_over_2/len(results)*100:.2f}%")
-    print(f"Percentage of systems where best affinity pose is NOT the lowest RMSD: {not_lowest_rmsd/len(results)*100:.2f}%")
-    
-    with open("exhaust50_results_summary_with_affinities.txt", "w") as f:
-        f.write("EXHAUST50 DOCKING RESULTS SUMMARY WITH AFFINITIES\n")
-        f.write("="*80 + "\n")
-        f.write(f"Total directories processed: {len(results)}\n")
-        f.write(f"Directories with successful results: {len([r for r in results if r is not None])}\n")
-        f.write("="*80 + "\n")
-        
-        for result in results:
-            f.write(f"PDB ID: {result['pdb_id']}\n")
-            f.write(f"  Lowest RMSD: {result['top1_rmsd']:.4f} Å\n")
-            f.write(f"  Lowest affinity RMSD: {result['best_affinity_rmsd']:.4f} Å\n")
-            f.write(f"  Lowest affinity: {result['lowest_affinity']:.3f}\n")
-            f.write(f"  Pose rank of lowest RMSD: {result['lowest_rmsd_pose_rank']}\n")
-            f.write(f"  Best affinity pose RMSD > 2 Å: {result['best_affinity_rmsd'] > 2.0 if result['best_affinity_rmsd'] is not None else 'N/A'}\n")
-            f.write(f"  Best affinity pose is lowest RMSD: {result['is_best_affinity_lowest_rmsd']}\n")
-            f.write(f"  Poses with RMSD < 2 Å (sorted by RMSD): {result['poses_with_rmsd_less_than_2_by_rmsd']}\n")
-            f.write(f"  Details for poses with RMSD < 2 Å (sorted by RMSD): {[(p, f'{r:.4f}', f'{a:.3f}') for p, r, a in result['details_for_valid_poses_by_rmsd']]}\n")
-            f.write("-" * 50 + "\n")
-        
-        f.write(f"\nOVERALL STATISTICS\n")
-        f.write(f"Total systems processed: {len(results)}\n")
-        f.write(f"Number of systems where best affinity pose RMSD > 2 Å: {best_affinity_rmsd_over_2}\n")
-        f.write(f"Number of systems where best affinity pose is NOT the lowest RMSD: {not_lowest_rmsd}\n")
-        f.write(f"Percentage of systems where best affinity pose RMSD > 2 Å: {best_affinity_rmsd_over_2/len(results)*100:.2f}%\n")
-        f.write(f"Percentage of systems where best affinity pose is NOT the lowest RMSD: {not_lowest_rmsd/len(results)*100:.2f}%\n")
+            all_detailed_results.extend(result)
+
+    # Create DataFrame and save to CSV
+    if all_detailed_results:
+        df = pd.DataFrame(all_detailed_results)
+        output_filename = "pose_analysis.csv"
+        df.to_csv(output_filename, index=False)
+        print(f"\nSaved detailed pose analysis to {output_filename}")
+        print(f"Total poses analyzed: {len(df)}")
+        print(f"Columns: {list(df.columns)}")
+
+        # Display summary statistics
+        print(f"\nSummary:")
+        print(f"- Total systems processed: {len(set(df['PDB_ID']))}")
+        print(f"- Total poses: {len(df)}")
+        print(f"- Average RMSD: {df['RMSD'].mean():.4f}")
+        print(f"- Min RMSD: {df['RMSD'].min():.4f}")
+        print(f"- Max RMSD: {df['RMSD'].max():.4f}")
+        print(f"- Average Vina Score: {df['Vina_Score'].mean():.3f}")
+        print(f"- Average Vina Rank: {df['Vina_Rank'].mean():.2f}")
+    else:
+        print("No results to save.")
 
 if __name__ == "__main__":
     main()
