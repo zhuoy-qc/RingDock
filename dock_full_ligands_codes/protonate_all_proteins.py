@@ -2,10 +2,20 @@ import os
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
+import re
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+def is_protein_file(filename):
+    """
+    Check if the file matches the pattern: PDB identifier + '_protein.pdb'
+    PDB identifier is typically 4 characters (alphanumeric), but could be longer in some cases.
+    """
+    # Pattern: starts with 4+ alphanumeric characters followed by '_protein.pdb'
+    pattern = r'^[A-Za-z0-9]{4,}_protein\.pdb$'
+    return bool(re.match(pattern, filename, re.IGNORECASE))
 
 def protonate_single_file_with_pdb2pqr(args):
     pdb_file, subdir_path = args
@@ -123,10 +133,14 @@ def protonate_file_with_fallback(pdb_file, subdir_path):
 def process_directory(directory_path):
     """
     Process all PDB files in a directory, applying protonation with fallback.
+    Only processes files that match the protein naming pattern: PDBID_protein.pdb
     """
     pdb_files = []
     for file in os.listdir(directory_path):
-        if file.lower().endswith('.pdb') and "protonated" not in file.lower() and "only" not in file.lower():
+        if (file.lower().endswith('.pdb') and 
+            is_protein_file(file) and  # Check if it matches the protein pattern
+            "protonated" not in file.lower() and 
+            "only" not in file.lower()):
             pdb_files.append(os.path.join(directory_path, file))
 
     results = []
@@ -166,12 +180,13 @@ def main():
     # Find all directories containing PDB files
     directories = find_pdb_directories('.')
     
-    # Filter directories that actually contain non-protonated PDB files
+    # Filter directories that actually contain non-protonated protein PDB files
     filtered_directories = []
     for directory in directories:
-        contains_unprotonated = False
+        contains_unprotonated_protein = False
         for file in os.listdir(directory):
             if (file.lower().endswith('.pdb') and 
+                is_protein_file(file) and  # Check if it matches the protein pattern
                 "protonated" not in file.lower() and 
                 "only" not in file.lower()):
                 
@@ -179,10 +194,10 @@ def main():
                 base_name = file.replace('.pdb', '')
                 protonated_file = os.path.join(directory, f"{base_name}_protonated.pdb")
                 if not os.path.exists(protonated_file) or os.path.getsize(protonated_file) == 0:
-                    contains_unprotonated = True
+                    contains_unprotonated_protein = True
                     break
         
-        if contains_unprotonated:
+        if contains_unprotonated_protein:
             filtered_directories.append(directory)
 
     log_entries = []
@@ -214,7 +229,8 @@ def main():
         for entry in log_entries:
             log_file.write(entry + '\n')
 
-    print(f"Processing complete for {len(filtered_directories)} directories. Check new_continue.log for details.")
+    print(f"Processing complete for {len(filtered_directories)} directories. "
+          f"Processed only files matching PDBID_protein.pdb pattern. Check new_continue.log for details.")
 
 
 if __name__ == "__main__":
