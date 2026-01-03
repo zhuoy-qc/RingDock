@@ -1,4 +1,4 @@
-🧬 RingDock 
+🧬 Pi-cation-Dock 
 Our code applys to any protein pocket contains at least one postively charge amino acid. This repository provides source code for our RingDock pipepline, focusing on pi-cation interactions (cations from protein interacts with ligand aromatic rings). Other non-colvaent interactions developing...
 
 ![My Diagram](RingDock_workflow.png)
