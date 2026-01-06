@@ -58,7 +58,7 @@ def apply_ranking(df_pred):
         if not arg_subset.empty:
             filtered_rows.append(arg_subset)
 
-    # Handle HIS and LYS normally (top 50% for HIS, top 5% for LYS)
+    # Handle HIS and LYS normally (top 50% for HIS, top 12% for LYS — as in your code)
     for res_type, pct in [('HIS', 50), ('LYS', 12)]:
         subset = df[df['ResidueType'] == res_type].copy()
         if not subset.empty:
@@ -76,97 +76,115 @@ def calculate_metrics(report_file, predictions_file):
     df_report = pd.read_csv(report_file)
     df_pred = pd.read_csv(predictions_file)
 
-    df_report['ResidueType'] = df_report['Protein'].apply(extract_residue_type)
-    df_pred['ResidueType'] = df_pred['Protein'].apply(extract_residue_type)
+    # === FIXED: Normalize and group by (CorePDB, ResidueID) ===
+    def extract_core_pdb_id(s):
+        s = str(s)
+        match = re.search(r'([A-Z0-9]{4}_[A-Z0-9]+)', s.upper())
+        return match.group(1) if match else s.split('_')[0].strip()
 
-    # Calculate before filter metrics
-    unique_report_all = set(df_report['Protein'].unique())
-    unique_pred_all = set(df_pred['Protein'].unique())
-    matched_before_all = unique_report_all & unique_pred_all
-    overall_recovery_rate_before = (len(matched_before_all) / len(unique_report_all) * 100) if len(unique_report_all) > 0 else 0
+    df_report['_CorePDB'] = df_report['Directory'].apply(extract_core_pdb_id)
+    df_pred['_CorePDB'] = df_pred['PDB_ID'].apply(extract_core_pdb_id)
+    df_report['_ResID'] = df_report['Protein'].apply(extract_residue_id)
+    df_pred['_ResID'] = df_pred['Protein'].apply(extract_residue_id)
+    df_report['_ResType'] = df_report['_ResID'].str[:3]
+    df_pred['_ResType'] = df_pred['_ResID'].str[:3]
 
-    # ARG-specific before filter metrics
-    arg_report = set(df_report[df_report['ResidueType'] == 'ARG']['Protein'].unique())
-    arg_pred = set(df_pred[df_pred['ResidueType'] == 'ARG']['Protein'].unique())
-    arg_matched_before = arg_report & arg_pred
-    arg_recovery_rate_before = (len(arg_matched_before) / len(arg_report) * 100) if len(arg_report) > 0 else 0
-    arg_recovery_count_before = len(arg_matched_before)
-    arg_total_count = len(arg_report)
-    
-    # LYS-specific before filter metrics
-    lys_report = set(df_report[df_report['ResidueType'] == 'LYS']['Protein'].unique())
-    lys_pred = set(df_pred[df_pred['ResidueType'] == 'LYS']['Protein'].unique())
-    lys_matched_before = lys_report & lys_pred
-    lys_recovery_rate_before = (len(lys_matched_before) / len(lys_report) * 100) if len(lys_report) > 0 else 0
-    lys_recovery_count_before = len(lys_matched_before)
-    lys_total_count = len(lys_report)
-    
-    # HIS-specific before filter metrics
-    his_report = set(df_report[df_report['ResidueType'] == 'HIS']['Protein'].unique())
-    his_pred = set(df_pred[df_pred['ResidueType'] == 'HIS']['Protein'].unique())
-    his_matched_before = his_report & his_pred
-    his_recovery_rate_before = (len(his_matched_before) / len(his_report) * 100) if len(his_report) > 0 else 0
-    his_recovery_count_before = len(his_matched_before)
-    his_total_count = len(his_report)
-    
+    # Keep only valid interactions
+    df_report = df_report.dropna(subset=['_CorePDB', '_ResID', '_ResType'])
+    df_pred = df_pred.dropna(subset=['_CorePDB', '_ResID', '_ResType'])
+
+    # Build reference and prediction sets as (CorePDB, ResID) tuples
+    ref_set_all = set(zip(df_report['_CorePDB'], df_report['_ResID']))
+    pred_set_all = set(zip(df_pred['_CorePDB'], df_pred['_ResID']))
+
+    ### FIXED: Replace all global 'Protein' set operations with per-complex (PDB,ResID) sets
+
+    # Overall
+    matched_before_all = ref_set_all & pred_set_all
+    overall_recovery_rate_before = (len(matched_before_all) / len(ref_set_all) * 100) if len(ref_set_all) > 0 else 0
     overall_recovery_count_before = len(matched_before_all)
-    overall_total_count = len(unique_report_all)
+    overall_total_count = len(ref_set_all)
+
+    # ARG-specific
+    ref_ARG = set(zip(df_report[df_report['_ResType'] == 'ARG']['_CorePDB'],
+                      df_report[df_report['_ResType'] == 'ARG']['_ResID']))
+    pred_ARG = set(zip(df_pred[df_pred['_ResType'] == 'ARG']['_CorePDB'],
+                       df_pred[df_pred['_ResType'] == 'ARG']['_ResID']))
+    arg_matched_before = ref_ARG & pred_ARG
+    arg_recovery_rate_before = (len(arg_matched_before) / len(ref_ARG) * 100) if len(ref_ARG) > 0 else 0
+    arg_recovery_count_before = len(arg_matched_before)
+    arg_total_count = len(ref_ARG)
+
+    # LYS-specific
+    ref_LYS = set(zip(df_report[df_report['_ResType'] == 'LYS']['_CorePDB'],
+                      df_report[df_report['_ResType'] == 'LYS']['_ResID']))
+    pred_LYS = set(zip(df_pred[df_pred['_ResType'] == 'LYS']['_CorePDB'],
+                       df_pred[df_pred['_ResType'] == 'LYS']['_ResID']))
+    lys_matched_before = ref_LYS & pred_LYS
+    lys_recovery_rate_before = (len(lys_matched_before) / len(ref_LYS) * 100) if len(ref_LYS) > 0 else 0
+    lys_recovery_count_before = len(lys_matched_before)
+    lys_total_count = len(ref_LYS)
+
+    # HIS-specific
+    ref_HIS = set(zip(df_report[df_report['_ResType'] == 'HIS']['_CorePDB'],
+                      df_report[df_report['_ResType'] == 'HIS']['_ResID']))
+    pred_HIS = set(zip(df_pred[df_pred['_ResType'] == 'HIS']['_CorePDB'],
+                       df_pred[df_pred['_ResType'] == 'HIS']['_ResID']))
+    his_matched_before = ref_HIS & pred_HIS
+    his_recovery_rate_before = (len(his_matched_before) / len(ref_HIS) * 100) if len(ref_HIS) > 0 else 0
+    his_recovery_count_before = len(his_matched_before)
+    his_total_count = len(ref_HIS)
 
     # Apply ranking filter
     df_pred_filtered = apply_ranking(df_pred)
 
-    # Calculate after filter metrics
-    unique_pred_filtered_all = set(df_pred_filtered['Protein'].unique())
-    matched_after_all = unique_report_all & unique_pred_filtered_all
-    overall_recovery_rate_after = (len(matched_after_all) / len(unique_report_all) * 100) if len(unique_report_all) > 0 else 0
+    # Rebuild filtered prediction sets (with same normalization)
+    df_pred_filtered['_CorePDB'] = df_pred_filtered['PDB_ID'].apply(extract_core_pdb_id)
+    df_pred_filtered['_ResID'] = df_pred_filtered['Protein'].apply(extract_residue_id)
+    df_pred_filtered['_ResType'] = df_pred_filtered['_ResID'].str[:3]
+    df_pred_filtered = df_pred_filtered.dropna(subset=['_CorePDB', '_ResID', '_ResType'])
 
-    # ARG-specific after filter metrics
-    arg_filtered = set(df_pred_filtered[df_pred_filtered['ResidueType'] == 'ARG']['Protein'].unique())
-    arg_matched_after = arg_report & arg_filtered
-    arg_recovery_rate_after = (len(arg_matched_after) / len(arg_report) * 100) if len(arg_report) > 0 else 0
-    arg_recovery_count_after = len(arg_matched_after)
-    
-    # LYS-specific after filter metrics
-    lys_filtered = set(df_pred_filtered[df_pred_filtered['ResidueType'] == 'LYS']['Protein'].unique())
-    lys_matched_after = lys_report & lys_filtered
-    lys_recovery_rate_after = (len(lys_matched_after) / len(lys_report) * 100) if len(lys_report) > 0 else 0
-    lys_recovery_count_after = len(lys_matched_after)
-    
-    # HIS-specific after filter metrics
-    his_filtered = set(df_pred_filtered[df_pred_filtered['ResidueType'] == 'HIS']['Protein'].unique())
-    his_matched_after = his_report & his_filtered
-    his_recovery_rate_after = (len(his_matched_after) / len(his_report) * 100) if len(his_report) > 0 else 0
-    his_recovery_count_after = len(his_matched_after)
-    
+    pred_set_filtered = set(zip(df_pred_filtered['_CorePDB'], df_pred_filtered['_ResID']))
+    matched_after_all = ref_set_all & pred_set_filtered
+    overall_recovery_rate_after = (len(matched_after_all) / len(ref_set_all) * 100) if len(ref_set_all) > 0 else 0
     overall_recovery_count_after = len(matched_after_all)
 
-    # Non-experimental predictions filtered out (ARG only)
-    predictions_not_in_exp_before = unique_pred_all - unique_report_all
-    predictions_not_in_exp_after = unique_pred_filtered_all - unique_report_all
-    arg_not_in_exp_before = len(set(df_pred[df_pred['ResidueType'] == 'ARG']['Protein'].unique()) & predictions_not_in_exp_before)
-    arg_not_in_exp_after = len(set(df_pred_filtered[df_pred_filtered['ResidueType'] == 'ARG']['Protein'].unique()) & predictions_not_in_exp_after)
+    # ARG after
+    pred_ARG_filt = set(zip(df_pred_filtered[df_pred_filtered['_ResType'] == 'ARG']['_CorePDB'],
+                            df_pred_filtered[df_pred_filtered['_ResType'] == 'ARG']['_ResID']))
+    arg_matched_after = ref_ARG & pred_ARG_filt
+    arg_recovery_rate_after = (len(arg_matched_after) / len(ref_ARG) * 100) if len(ref_ARG) > 0 else 0
+    arg_recovery_count_after = len(arg_matched_after)
 
-    if arg_not_in_exp_before > 0:
-        arg_filtered_out_rate = ((arg_not_in_exp_before - arg_not_in_exp_after) / arg_not_in_exp_before) * 100
-        arg_fp_removed = arg_not_in_exp_before - arg_not_in_exp_after
-        arg_fp_total = arg_not_in_exp_before
-    else:
-        arg_filtered_out_rate = 0.0
-        arg_fp_removed = 0
-        arg_fp_total = 0
+    # LYS after
+    pred_LYS_filt = set(zip(df_pred_filtered[df_pred_filtered['_ResType'] == 'LYS']['_CorePDB'],
+                            df_pred_filtered[df_pred_filtered['_ResType'] == 'LYS']['_ResID']))
+    lys_matched_after = ref_LYS & pred_LYS_filt
+    lys_recovery_rate_after = (len(lys_matched_after) / len(ref_LYS) * 100) if len(ref_LYS) > 0 else 0
+    lys_recovery_count_after = len(lys_matched_after)
 
-    # Non-experimental predictions filtered out (LYS only)
-    lys_not_in_exp_before = len(set(df_pred[df_pred['ResidueType'] == 'LYS']['Protein'].unique()) & predictions_not_in_exp_before)
-    lys_not_in_exp_after = len(set(df_pred_filtered[df_pred_filtered['ResidueType'] == 'LYS']['Protein'].unique()) & predictions_not_in_exp_after)
+    # HIS after
+    pred_HIS_filt = set(zip(df_pred_filtered[df_pred_filtered['_ResType'] == 'HIS']['_CorePDB'],
+                            df_pred_filtered[df_pred_filtered['_ResType'] == 'HIS']['_ResID']))
+    his_matched_after = ref_HIS & pred_HIS_filt
+    his_recovery_rate_after = (len(his_matched_after) / len(ref_HIS) * 100) if len(ref_HIS) > 0 else 0
+    his_recovery_count_after = len(his_matched_after)
 
-    if lys_not_in_exp_before > 0:
-        lys_filtered_out_rate = ((lys_not_in_exp_before - lys_not_in_exp_after) / lys_not_in_exp_before) * 100
-        lys_fp_removed = lys_not_in_exp_before - lys_not_in_exp_after
-        lys_fp_total = lys_not_in_exp_before
-    else:
-        lys_filtered_out_rate = 0.0
-        lys_fp_removed = 0
-        lys_fp_total = 0
+    # False positive calculation (still based on residue ID, but now per-complex)
+    fp_before_all = pred_set_all - ref_set_all
+    fp_after_all = pred_set_filtered - ref_set_all
+
+    arg_fp_before = len(pred_ARG - ref_ARG)
+    arg_fp_after = len(pred_ARG_filt - ref_ARG)
+    arg_fp_removed = arg_fp_before - arg_fp_after
+    arg_fp_total = arg_fp_before
+    arg_filtered_out_rate = (arg_fp_removed / arg_fp_before * 100) if arg_fp_before > 0 else 0.0
+
+    lys_fp_before = len(pred_LYS - ref_LYS)
+    lys_fp_after = len(pred_LYS_filt - ref_LYS)
+    lys_fp_removed = lys_fp_before - lys_fp_after
+    lys_fp_total = lys_fp_before
+    lys_filtered_out_rate = (lys_fp_removed / lys_fp_before * 100) if lys_fp_before > 0 else 0.0
 
     return {
         'arg_recovery_rate_before': arg_recovery_rate_before,
@@ -199,7 +217,7 @@ def calculate_metrics(report_file, predictions_file):
     }
 
 def main():
-    report_file = "newest_reference_experimental_pication_interactions_report.csv"
+    report_file = "reference_experimental_pication_interactions_report_with_pka_filtered.csv"
     predictions_file = "new_sample_with_energy_predicted.csv"
 
     results = calculate_metrics(report_file, predictions_file)
@@ -217,7 +235,7 @@ def main():
 
     # Save filtered predictions
     results['df_pred_filtered'].to_csv("loose_remained_predictions.csv", index=False)
-    print("Filtered predictions saved to 'remained_predictions.csv'")
+    print("Filtered predictions saved to 'loose_remained_predictions.csv'")
 
 if __name__ == "__main__":
     main()
