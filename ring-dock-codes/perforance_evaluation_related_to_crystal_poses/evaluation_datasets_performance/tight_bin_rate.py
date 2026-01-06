@@ -145,7 +145,7 @@ def calculate_metrics(report_file, predictions_file):
     return metrics
 
 def main():
-    report_file = "newest_reference_experimental_pication_interactions_report.csv"
+    report_file = "reference_experimental_pication_interactions_report_with_pka_filtered.csv"
     predictions_file = "new_sample_with_energy_predicted.csv"
 
     results = calculate_metrics(report_file, predictions_file)
