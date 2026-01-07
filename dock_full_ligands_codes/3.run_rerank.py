@@ -243,7 +243,7 @@ def create_comprehensive_features(interaction_csv="interactions_autobox4_ex50.cs
     
     return result_df
 
-def load_model_and_predict(input_csv, model_path='vina_failure_finetuned_best_model.pkl'):
+def load_model_and_predict(input_csv, model_path='/data1/zyin/P-L/activat-learning/new_fine/vina_failure_finetuned_best_model.pkl'):
     """Load the model and make predictions"""
     # Load the trained model
     with open(model_path, 'rb') as f:
@@ -367,12 +367,12 @@ def merge_with_interactions(predictions_df, interactions_csv='interactions_autob
 
 def main():
     parser = argparse.ArgumentParser(description='Generate features, predict, and output top results')
+    parser.add_argument('--model_path', default='/data1/zyin/P-L/activat-learning/new_fine/vina_failure_finetuned_best_model.pkl', 
+                       help='Path to trained model file')
     parser.add_argument('--interaction_csv', default='all_sampled_poses_with-pi-cation-interactions.csv', 
                        help='Path to interactions CSV file')
     parser.add_argument('--results_csv', default='exhaust50_detailed_results.csv', 
                        help='Path to results CSV file (with or without RMSD)')
-    parser.add_argument('--model_path', default='vina_failure_finetuned_best_model.pkl', 
-                       help='Path to trained model file')
     parser.add_argument('--top_n', type=int, default=4, 
                        help='Number of top results to output per PDB_ID (default: 4)')
     parser.add_argument('--features_output', default='comprehensive_features.csv', 
