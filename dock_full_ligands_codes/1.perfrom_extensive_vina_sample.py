@@ -29,11 +29,10 @@ def process_single_directory(dir_path):
         "-r", f"{full_dir_name}_protein_protonated.pdb",
         "-l", f"{full_dir_name}_ligand.sdf",
         "--autobox_ligand", f"{full_dir_name}_ligand.sdf",
-        "--autobox_add", "4",
         "--num_modes", "40",
         "--energy_range", "10",
         "--exhaustiveness", "50",
-        "-o", "exhaust50_dock.sdf",  # Changed output file name
+        "-o", "exhaust50_dock.sdf",  # output file name
         "--seed", "1"
     ]
 
