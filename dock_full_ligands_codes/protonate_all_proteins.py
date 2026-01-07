@@ -10,11 +10,12 @@ logger = logging.getLogger(__name__)
 
 def is_protein_file(filename):
     """
-    Check if the file matches the pattern: PDB identifier + '_protein.pdb'
-    PDB identifier is typically 4 characters (alphanumeric), but could be longer in some cases.
+    Check if the file matches either of these patterns:
+    - 4-char PDB ID + '_protein.pdb' (e.g., 9B6G_protein.pdb)
+    - 4-char PDB ID + _ + additional identifier + '_protein.pdb' (e.g., 9B6G_LQ7_protein.pdb)
     """
-    # Pattern: starts with 4+ alphanumeric characters followed by '_protein.pdb'
-    pattern = r'^[A-Za-z0-9]{4,}_protein\.pdb$'
+    # Pattern: 4 alphanumeric chars, optional underscore + additional identifier, followed by '_protein.pdb'
+    pattern = r'^[A-Za-z0-9]{4}(?:_[A-Za-z0-9]+)?_protein\.pdb$'
     return bool(re.match(pattern, filename, re.IGNORECASE))
 
 def protonate_single_file_with_pdb2pqr(args):
@@ -130,10 +131,10 @@ def protonate_file_with_fallback(pdb_file, subdir_path):
         return protonate_single_file_with_obabel((pdb_file, subdir_path))
 
 
-def process_directory(directory_path):
+def process_directory(directory):
     """
     Process all PDB files in a directory, applying protonation with fallback.
-    Only processes files that match the protein naming pattern: PDBID_protein.pdb
+    Only processes files that match the protein naming pattern: PDBID_protein.pdb or PDBID_ligand_protein.pdb
     """
     pdb_files = []
     for file in os.listdir(directory_path):
@@ -230,7 +231,7 @@ def main():
             log_file.write(entry + '\n')
 
     print(f"Processing complete for {len(filtered_directories)} directories. "
-          f"Processed only files matching PDBID_protein.pdb pattern. Check new_continue.log for details.")
+          f"Processed only files matching PDBID_protein.pdb or PDBID_ligand_protein.pdb pattern. Check new_continue.log for details.")
 
 
 if __name__ == "__main__":
