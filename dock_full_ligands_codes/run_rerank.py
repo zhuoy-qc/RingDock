@@ -369,7 +369,7 @@ def main():
     parser = argparse.ArgumentParser(description='Generate features, predict, and output top results')
     parser.add_argument('--interaction_csv', default='all_sampled_poses_with-pi-cation-interactions.csv', 
                        help='Path to interactions CSV file')
-    parser.add_argument('--results_csv', default='no_rmsd.csv', 
+    parser.add_argument('--results_csv', default='exhaust50_detailed_results.csv', 
                        help='Path to results CSV file (with or without RMSD)')
     parser.add_argument('--model_path', default='vina_failure_finetuned_best_model.pkl', 
                        help='Path to trained model file')
