@@ -3,6 +3,7 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 import re
+import multiprocessing
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -131,7 +132,7 @@ def protonate_file_with_fallback(pdb_file, subdir_path):
         return protonate_single_file_with_obabel((pdb_file, subdir_path))
 
 
-def process_directory(directory):
+def process_directory(directory_path):
     """
     Process all PDB files in a directory, applying protonation with fallback.
     Only processes files that match the protein naming pattern: PDBID_protein.pdb or PDBID_ligand_protein.pdb
@@ -178,6 +179,13 @@ def find_pdb_directories(root_path='.'):
 
 
 def main():
+    # Automatically detect number of CPUs available
+    num_cpus = multiprocessing.cpu_count()
+    # Use up to 75% of available CPUs to avoid system overload
+    max_workers = min(num_cpus, max(1, int(num_cpus * 0.75)))
+    
+    logger.info(f"Detected {num_cpus} CPUs, using {max_workers} workers for processing")
+
     # Find all directories containing PDB files
     directories = find_pdb_directories('.')
     
@@ -203,8 +211,8 @@ def main():
 
     log_entries = []
 
-    # Use ThreadPoolExecutor with up to 64 workers
-    with ThreadPoolExecutor(max_workers=64) as executor:
+    # Use ThreadPoolExecutor with automatically determined number of workers
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all directory processing tasks
         future_to_dir = {
             executor.submit(process_single_directory, directory): directory
@@ -231,6 +239,7 @@ def main():
             log_file.write(entry + '\n')
 
     print(f"Processing complete for {len(filtered_directories)} directories. "
+          f"Using {max_workers} workers out of {num_cpus} available CPUs. "
           f"Processed only files matching PDBID_protein.pdb or PDBID_ligand_protein.pdb pattern. Check new_continue.log for details.")
 
 
