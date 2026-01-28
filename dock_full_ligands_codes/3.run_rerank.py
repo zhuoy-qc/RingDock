@@ -9,11 +9,8 @@ import sys
 def create_comprehensive_features(interaction_csv="interactions_autobox4_ex50.csv",
                                  results_csv="no_rmsd.csv", 
                                  output_file="comprehensive_features.csv"):
-    """Create comprehensive features from interaction and results CSVs"""
-    # Read the interaction data
     interaction_df = pd.read_csv(interaction_csv)
     
-    # Convert Ring_Type to numeric: '5-membered' -> 5, '6-membered' -> 6
     def convert_ring_type(ring_type):
         if pd.isna(ring_type):
             return np.nan
@@ -26,7 +23,7 @@ def create_comprehensive_features(interaction_csv="interactions_autobox4_ex50.cs
     
     interaction_df['Ring_Type_Numeric'] = interaction_df['Ring_Type'].apply(convert_ring_type)
     
-    # Extract pose number from PDB_File
+
     def extract_pose_number(pdb_file):
         parts = pdb_file.replace('.pdb', '').split('_')
         if len(parts) >= 2:
@@ -46,7 +43,7 @@ def create_comprehensive_features(interaction_csv="interactions_autobox4_ex50.cs
         'Ring_Type_Numeric': list
     }).reset_index()
     
-    # Function to process interaction details
+
     def process_interaction_details(row):
         residue_list = row['Protein_Residue_Type']
         energy_list = row['Predicted_Energy']
@@ -55,7 +52,7 @@ def create_comprehensive_features(interaction_csv="interactions_autobox4_ex50.cs
         offset_list = row['Offset']
         ring_type_list = row['Ring_Type_Numeric']
         
-        # Count residue types
+        
         lys_count = sum(1 for res in residue_list if res == 'LYS')
         arg_count = sum(1 for res in residue_list if res == 'ARG')
         his_count = sum(1 for res in residue_list if res == 'HIS')
@@ -260,14 +257,14 @@ def load_model_and_predict(input_csv, model_path='/data1/zyin/P-L/activat-learni
     # Prepare features (excluding PDB_ID, Vina_Rank, RMSD, Is_Good_Pose from features)
     feature_cols = [col for col in df.columns if col not in ['PDB_ID', 'Vina_Rank', 'RMSD', 'Is_Good_Pose']]
     
-    # Check if all required feature columns exist
+   
     missing_features = [col for col in feature_columns if col not in df.columns]
     if missing_features:
         print(f"Warning: Missing features: {missing_features}")
         for col in missing_features:
             df[col] = np.nan
     
-    # Prepare features
+
     X = df[feature_columns]
     
     # Handle missing values
@@ -276,19 +273,19 @@ def load_model_and_predict(input_csv, model_path='/data1/zyin/P-L/activat-learni
             median_val = X[col].median()
             X.loc[:, col] = X[col].fillna(median_val)
     
-    # Scale and select features
+   
     X_scaled = scaler.transform(X)
     X_selected = selector.transform(X_scaled)
     
-    # Make predictions
+    
     y_pred_proba = model.predict_proba(X_selected)[:, 1]
     y_pred = model.predict(X_selected)
     
-    # Add predictions to the dataframe
+   
     df['Model_Probability'] = y_pred_proba
     df['Model_Prediction'] = y_pred
     
-    # Print information about RMSD data
+
     if 'RMSD' in df.columns:
         rmsd_count = df['RMSD'].notna().sum()
         total_count = len(df)
@@ -332,7 +329,7 @@ def merge_with_interactions(predictions_df, interactions_csv='interactions_autob
     """Merge predictions with interaction data"""
     interactions_df = pd.read_csv(interactions_csv)
     
-    # Function to extract Vina rank from PDB filename
+
     def extract_vina_rank(pdb_file):
         match = re.search(r'complex_(\d+)\.pdb', pdb_file)
         if match:
@@ -397,7 +394,6 @@ def main():
         model_path=args.model_path
     )
     
-    # Save predictions
     predictions_df.to_csv(args.predictions_output, index=False)
     print(f"Predictions saved to {args.predictions_output}")
     
