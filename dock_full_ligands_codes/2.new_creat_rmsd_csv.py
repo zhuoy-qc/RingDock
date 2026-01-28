@@ -240,7 +240,7 @@ def main():
     print("="*80)
     for result in results:
         print(f"PDB ID: {result['pdb_id']}")
-        print(f"  Lowest RMSD: {result['top1_rmsd']:.4f} Å")
+        '''print(f"  Lowest RMSD: {result['top1_rmsd']:.4f} Å")
         print(f"  Lowest affinity RMSD: {result['best_affinity_rmsd']:.4f} Å")
         print(f"  Lowest affinity: {result['lowest_affinity']:.3f}")
         print(f"  Pose rank of lowest RMSD: {result['lowest_rmsd_pose_rank']}")
@@ -248,7 +248,7 @@ def main():
         print(f"  Best affinity pose is lowest RMSD: {result['is_best_affinity_lowest_rmsd']}")
         print(f"  Poses with RMSD < 2 Å (sorted by RMSD): {result['poses_with_rmsd_less_than_2_by_rmsd']}")
         print(f"  Details for poses with RMSD < 2 Å (sorted by RMSD): {[(p, f'{r:.4f}', f'{a:.3f}') for p, r, a in result['details_for_valid_poses_by_rmsd']]}")
-        print("-" * 50)
+        print("-" * 50)'''
     
     # Count PDB IDs with lowest RMSD < 2.0 Å
     pdb_ids_with_low_rmsd = [r for r in results if r['top1_rmsd'] is not None and r['top1_rmsd'] < 2.0]
@@ -261,13 +261,13 @@ def main():
     print("OVERALL STATISTICS")
     print("="*80)
     print(f"Total systems processed: {len(results)}")
-    print(f"Number of systems where best affinity pose RMSD > 2 Å: {best_affinity_rmsd_over_2}")
+    '''print(f"Number of systems where best affinity pose RMSD > 2 Å: {best_affinity_rmsd_over_2}")
     print(f"Number of systems where best affinity pose is NOT the lowest RMSD: {not_lowest_rmsd}")
     print(f"Number of PDB IDs with lowest RMSD < 2.0 Å: {num_pdb_ids_with_low_rmsd}")
     print(f"Percentage of systems where best affinity pose RMSD > 2 Å: {best_affinity_rmsd_over_2/len(results)*100:.2f}%")
     print(f"Percentage of systems where best affinity pose is NOT the lowest RMSD: {not_lowest_rmsd/len(results)*100:.2f}%")
     print(f"Percentage of PDB IDs with lowest RMSD < 2.0 Å: {num_pdb_ids_with_low_rmsd/len(results)*100:.2f}%")
-    
+    '''
     # Create detailed CSV with PDB_ID, RMSD, Vina_Score, Vina_Rank (removed Pose column)
     csv_rows = []
     for result in results:
