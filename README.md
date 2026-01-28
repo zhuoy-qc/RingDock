@@ -12,9 +12,14 @@ conda env create -f ringdock_pi-cation_env.yml
 
 conda activate ringdock_pi-cation_env
 
-📁 Preparation 
+
+
+
+📁 Preparation for Ring Docking Approach 1
 Download the ring_sdf_files dir and set the path in the codes to match this dir path
 
+📁 Preparation for FULL LIGAND DOCKING:
+Prepare protanated protein in pbd format, and ligand in sdf format. Put them inside a dir (e.g 7YXF). the protein should be named as 7YXF_protein_protanated.pdb and the ligand initial position should be named as 7YXF_ligand.sdf .
 
 📁 Dataset-Based Usage (e.g., PoseBuster)
 To run the full pipeline on a dataset like PoseBuster:
